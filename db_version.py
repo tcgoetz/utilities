@@ -5,10 +5,10 @@ __copyright__ = "Copyright Tom Goetz"
 __license__ = "GPL"
 
 
-import key_value
+from utilities.key_value import KeyValueObject
 
 
-class DbVersionObject(key_value.KeyValueObject):
+class DbVersionObject(KeyValueObject):
     """Objects for managing databse versioning."""
 
     __tablename__ = 'version'

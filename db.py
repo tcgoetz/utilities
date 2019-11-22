@@ -10,7 +10,7 @@ import datetime
 
 from contextlib import contextmanager
 
-from sqlalchemy import create_engine, func, desc, extract, and_
+from sqlalchemy import create_engine, func, desc, extract, and_, literal_column
 from sqlalchemy.orm import sessionmaker, synonym, Query
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm.attributes import set_attribute
@@ -101,7 +101,7 @@ class DBObject(object):
         """Return a SQL phrase for rounding an optionally aliasing a column."""
         if alt_col_name is None:
             alt_col_name = col_name
-        return 'ROUND(%s, %d) AS %s%s ' % (col_name, places, alt_col_name, seperator)
+        return literal_column('ROUND(%s, %d) AS %s%s ' % (col_name, places, alt_col_name, seperator))
 
     @classmethod
     def round_col(cls, col_name, alt_col_name=None, places=1):
@@ -178,7 +178,7 @@ class DBObject(object):
     def update_from_dict(self, values_dict, ignore_none=False):
         """Update a DB object instance from values in a dict by matching the dict keys to DB object attributes."""
         col_names = self.get_col_names()
-        for key, value in values_dict.iteritems():
+        for key, value in values_dict.items():
             if (not ignore_none or value is not None) and key in col_names:
                 set_attribute(self, key, value)
         return self
@@ -231,7 +231,7 @@ class DBObject(object):
         """Find a table row that matches the values in the values_dict."""
         query = session.query(cls)
         if cls.match_col_names is not None:
-            # for match_col_name, match_col in cls.match_cols.iteritems():
+            # for match_col_name, match_col in cls.match_cols.items():
             #     query = query.filter(match_col == values_dict[match_col_name])
             for match_col_name in cls.match_col_names:
                 query = query.filter(cls.get_col_by_name(match_col_name) == values_dict[match_col_name])

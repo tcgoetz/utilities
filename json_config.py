@@ -15,7 +15,7 @@ class JsonConfig(object):
     def __init__(self, filename):
         """Return a new JsonConfig instance."""
         def parser(entry):
-            for (entry_key, entry_value) in entry.iteritems():
+            for (entry_key, entry_value) in entry.items():
                 if str(entry_key).endswith('_date'):
                     entry[entry_key] = dateutil.parser.parse(entry_value).date()
             return entry

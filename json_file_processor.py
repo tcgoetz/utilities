@@ -9,7 +9,7 @@ import logging
 import traceback
 import progressbar
 
-from file_processor import FileProcessor
+from utilities.file_processor import FileProcessor
 
 
 class JsonFileProcessor(object):
@@ -44,12 +44,13 @@ class JsonFileProcessor(object):
 
     def __parse_file(self, filename):
         def parser(entry):
-            for (conversion_key, conversion_func) in self.conversions.iteritems():
+            for (conversion_key, conversion_func) in self.conversions.items():
                 entry_value = entry.get(conversion_key)
                 if entry_value is not None:
                     entry[conversion_key] = conversion_func(entry_value)
             return entry
-        return json.load(open(filename), object_hook=parser)
+        with open(filename) as file:
+            return json.load(file, object_hook=parser)
 
     def _get_field(self, json, fieldname, format_func=str):
         try:

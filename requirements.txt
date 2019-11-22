@@ -1,4 +1,3 @@
 sqlalchemy
 requests
 python-dateutil
-enum34
