@@ -364,6 +364,7 @@ class DBObject(object):
 
     @classmethod
     def s_get_for_period(cls, session, start_ts, end_ts, selectable=None, not_none_col=None):
+        """Return all DB records matching the selection criteria."""
         if selectable is None:
             selectable = cls
         query = cls.s_query(session, selectable, cls.time_col, start_ts, end_ts)
