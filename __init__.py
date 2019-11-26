@@ -4,6 +4,7 @@ __author__ = "Tom Goetz"
 __copyright__ = "Copyright Tom Goetz"
 __license__ = "GPL"
 
+# flake8: noqa
 
 import version
 import utilities.list_and_dict as list_and_dict
