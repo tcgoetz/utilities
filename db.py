@@ -500,6 +500,7 @@ class DBObject(object):
 
     @classmethod
     def get_col_latest(cls, db, col, ignore_le_zero=False):
+        """Return the most recent value for the given column."""
         with db.managed_session() as session:
             query = session.query(col)
             if ignore_le_zero:
