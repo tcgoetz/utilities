@@ -19,7 +19,8 @@ class JsonConfig(object):
                 if str(entry_key).endswith('_date'):
                     entry[entry_key] = dateutil.parser.parse(entry_value).date()
             return entry
-        self.config = json.load(open(filename), object_hook=parser)
+        with open(filename) as file:
+            self.config = json.load(file, object_hook=parser)
 
     def get_datetime(self, node):
         """Return a datetime.datetime object created from a date string."""
