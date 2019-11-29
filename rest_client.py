@@ -23,21 +23,21 @@ class RestException(Exception):
 
     def __repr__(self):
         """Return a string representation of a RestException instance."""
-        classname = self.__class__.__name__
-        return "<%s() %r>" % (classname, self.data)
+        return f'<{self.__class__.__name__}() {repr(self.data)}>'
 
     def __str__(self):
         """Return a string representation of a RestException instance."""
-        self.__repr__()
+        return self.__repr__()
 
 
 class RestCallException(RestException):
     """Exception caught while processing REST responses."""
 
-    def __init__(self, e, url, error):
+    def __init__(self, e, url, response, error):
         """Create a new instance of the RestException class."""
-        RestException.__init__(self, e, url, error)
+        super().__init__(e, error)
         self.data['url'] = url
+        self.response = response
 
 
 class RestResponseException(RestException):
@@ -45,7 +45,7 @@ class RestResponseException(RestException):
 
     def __init__(self, e, response, error):
         """Create a new instance of the RestException class."""
-        RestException.__init__(self, e, error)
+        super().__init__(e, error)
         self.data['response'] = response
 
 
@@ -83,7 +83,7 @@ class RestClient(object):
     @classmethod
     def inherit(cls, rest_client, route):
         """Create a new RestClient object from a RestClient object. The new object will handle an API endpoint that is a child of the old RestClient."""
-        return RestClient(rest_client.session, rest_client.host, '%s/%s' % (rest_client.base_route, route),
+        return RestClient(rest_client.session, rest_client.host, f'{rest_client.base_route}/{route}',
                           protocol=rest_client.protocol, port=rest_client.port)
 
     def url(self, leaf_route=None):
@@ -93,10 +93,10 @@ class RestClient(object):
         else:
             path = self.base_route
         if (self.protocol == RestProtocol.https and self.port == 443) or (self.protocol == RestProtocol.http and self.port == 80):
-            return '%s://%s/%s' % (self.protocol.name, self.host, path)
-        return '%s://%s:%s/%s' % (self.protocol.name, self.host, self.port, path)
+            return f'{self.protocol.name}://{self.host}/{path}'
+        return f'{self.protocol.name}://{self.host}:{self.port}/{path}'
 
-    def get(self, leaf_route, aditional_headers={}, params={}):
+    def get(self, leaf_route, aditional_headers={}, params={}, ignore_errors=[]):
         """Make a REST API call using the GET method."""
         total_headers = self.default_headers.copy()
         total_headers.update(aditional_headers)
@@ -104,7 +104,9 @@ class RestClient(object):
             response = self.session.get(self.url(leaf_route), headers=total_headers, params=params)
             response.raise_for_status()
         except Exception as e:
-            raise RestCallException(e, leaf_route, "GET %s failed (%d): %s" % (response.url, response.status_code, response.text))
+            if response.status_code in ignore_errors:
+                return
+            raise RestCallException(e, leaf_route, response, f'GET {response.url} failed ({response.status_code}): {response.text}')
         return response
 
     def post(self, leaf_route, aditional_headers, params, data):
@@ -115,7 +117,7 @@ class RestClient(object):
             response = self.session.post(self.url(leaf_route), headers=total_headers, params=params, data=data)
             response.raise_for_status()
         except Exception as e:
-            raise RestCallException(e, leaf_route, "POST %s failed (%d): %s" % (response.url, response.status_code, response.text))
+            raise RestCallException(e, leaf_route, f'POST {response.url} failed ({response.status_code}): {response.text}')
         return response
 
     @classmethod
@@ -128,13 +130,15 @@ class RestClient(object):
         with open(filename, 'w') as file:
             file.write(json.dumps(json_data, default=cls.__convert_to_json))
 
-    def __download_file(self, save_func, leaf_route, filename, overwite, params=None):
+    def __download_file(self, save_func, leaf_route, filename, overwite, params=None, ignore_errors=[]):
         """Download data from a REST API and save it to a file."""
         exists = os.path.isfile(filename)
         if not exists or overwite:
             self.logger.info("%s %s", 'Overwriting' if exists else 'Downloading', filename)
-            response = self.get(leaf_route, params=params)
-            save_func(filename, response)
+            response = self.get(leaf_route, params=params, ignore_errors=ignore_errors)
+            if response is not None:
+                self.logger.info("Writing %s", filename)
+                save_func(filename, response)
         else:
             self.logger.info("Ignoring %s (exists)", filename)
 
@@ -142,11 +146,11 @@ class RestClient(object):
         try:
             self.save_json_to_file(filename, response.json())
         except Exception as e:
-            raise RestResponseException(e, response, error="failed to save as json: %s (%r)" % (e, response.content))
+            raise RestResponseException(e, response, error=f'failed to save as json: {e} ({response.content})')
 
-    def download_json_file(self, leaf_route, filename, overwite=True, params=None):
+    def download_json_file(self, leaf_route, filename, overwite=True, params=None, ignore_errors=[]):
         """Download JSON formatted data from a REST API and save it to a file."""
-        self.__download_file(self.___save_json_to_file, leaf_route, filename + '.json', overwite, params)
+        self.__download_file(self.___save_json_to_file, leaf_route, f'{filename}.json', overwite, params, ignore_errors)
 
     @classmethod
     def save_binary_file(cls, filename, response):
@@ -156,7 +160,7 @@ class RestClient(object):
                 for chunk in response:
                     file.write(chunk)
         except Exception as e:
-            raise RestResponseException(e, response, error="failed to save as binary: %s (%r)" % (e, response.content))
+            raise RestResponseException(e, response, error=f'failed to save as binary: {e} ({response.content})')
 
     def download_binary_file(self, leaf_route, filename, overwite=True, params=None):
         """Download binary data from a REST API and save it to a file."""
