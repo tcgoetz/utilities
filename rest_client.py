@@ -102,6 +102,7 @@ class RestClient(object):
         total_headers.update(aditional_headers)
         try:
             response = self.session.get(self.url(leaf_route), headers=total_headers, params=params)
+            response.raise_for_status()
         except Exception as e:
             raise RestCallException(e, leaf_route, "GET %s failed (%d): %s" % (response.url, response.status_code, response.text))
         return response

@@ -37,11 +37,11 @@ class FileProcessor(object):
         """Search a directory, p[ossibly recursively, and return a list of all files matching a regex."""
         cls.logger.debug("Reading directory: %s looking for %s", input_dir, file_regex)
         file_names = []
-        timestamp = datetime.datetime.now() - datetime.timedelta(1)
+        latest_threshold = datetime.datetime.now() - datetime.timedelta(3)
         for file in os.listdir(input_dir):
             file_with_path = input_dir + "/" + file
             if recursive and os.path.isdir(file_with_path):
                 file_names = file_names + cls.dir_to_files(file_with_path, file_regex, latest)
-            elif cls.__regex_matches_file(file, file_regex) and (not latest or cls.__file_newer_than(file_with_path, timestamp)):
+            elif cls.__regex_matches_file(file, file_regex) and (not latest or cls.__file_newer_than(file_with_path, latest_threshold)):
                 file_names.append(file_with_path)
         return file_names

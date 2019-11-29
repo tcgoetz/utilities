@@ -185,11 +185,13 @@ class DBObject(object):
 
     @classmethod
     def __delete_view(cls, db, view_name):
+        """Delete a database view with name view_name."""
         with db.managed_session() as session:
             session.execute('DROP VIEW IF EXISTS ' + view_name)
 
     @classmethod
     def delete_view(cls, db, view_name=None):
+        """Delete a database view with name view_name."""
         cls.__delete_view(db, view_name if view_name is not None else cls.get_default_view_name())
 
     @classmethod
@@ -198,17 +200,20 @@ class DBObject(object):
 
     @classmethod
     def create_view_if_doesnt_exist(cls, db, view_name, query_str):
+        """Create a database view named view_name if ti doesn't already exist."""
         with db.managed_session() as session:
             cls.__create_view_if_not_exists(session, view_name, query_str)
 
     @classmethod
     def create_join_view(cls, db, view_name, selectable, join_table, order_by):
+        """Create a database view named view_name if ti doesn't already exist."""
         with db.managed_session() as session:
             query = Query(selectable, session=session).join(join_table).order_by(order_by)
             cls.__create_view_if_not_exists(session, view_name, str(query))
 
     @classmethod
     def create_multi_join_view(cls, db, view_name, selectable, joins, order_by):
+        """Create a database view named view_name if ti doesn't already exist."""
         with db.managed_session() as session:
             query = Query(selectable, session=session)
             for (join_table, join_clause) in joins:
@@ -224,6 +229,7 @@ class DBObject(object):
 
     @classmethod
     def intersection(cls, values_dict):
+        """Return the dict elements whose keys are column names."""
         return filter_dict_by_list(values_dict, cls.get_col_names())
 
     @classmethod
