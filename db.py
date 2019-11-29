@@ -22,43 +22,56 @@ from utilities.list_and_dict import filter_dict_by_list
 logger = logging.getLogger(__name__)
 
 
+class DbParams(object):
+    """Holds parameters for attaching to a database."""
+
+    def __init__(self, **kwargs):
+        if 'db_type' not in kwargs:
+            raise Exception('db_type is a required parameter')
+        self.__dict__.update(kwargs)
+
+
 class DB(object):
     """Object representing a database."""
 
-    def __init__(self, db_params_dict, debug=False):
+    def __init__(self, db_params, debug=False):
         """
         Return an instance a databse access class.
 
         Parameters:
-            db_params_dict (dict): config data for accessing the database
+            db_params (dict): config data for accessing the database
             debug (Boolean): enable debug logging
 
         """
-        logger.info("%s: %r debug: %s ", self.__class__.__name__, db_params_dict, debug)
+        logger.info("%s: %r debug: %s ", self.__class__.__name__, db_params, debug)
         if debug > 0:
             logger.setLevel(logging.DEBUG)
         else:
             logger.setLevel(logging.INFO)
-        self.db_params_dict = db_params_dict
-        url_func = getattr(self, '_%s_url' % self.db_params_dict['db_type'])
-        self.engine = create_engine(url_func(self.db_params_dict), echo=(debug > 1))
+        self.db_params = db_params
+        url_func = getattr(self, f'_{db_params.db_type}_url')
+        self.engine = create_engine(url_func(self.db_params), echo=(debug > 1))
         self.session_maker = sessionmaker(bind=self.engine, expire_on_commit=False)
 
     @classmethod
-    def _sqlite_url(cls, db_params_dict):
-        return "sqlite:///" + db_params_dict['db_path'] + '/' + cls.db_name + '.db'
+    def _sqlite_path(cls, db_params):
+        return f'{db_params.db_path}/{cls.db_name}.db'
 
     @classmethod
-    def _sqlite_delete(cls, db_params_dict):
-        filename = db_params_dict['db_path'] + '/' + cls.db_name + '.db'
+    def _sqlite_url(cls, db_params):
+        return 'sqlite:///' + cls._sqlite_path(db_params)
+
+    @classmethod
+    def _sqlite_delete(cls, db_params):
+        filename = cls._sqlite_path(db_params)
         try:
             os.remove(filename)
         except Exception:
             logger.warning('%s not removed', filename)
 
     @classmethod
-    def _mysql_url(cls, db_params_dict):
-        return "mysql+pymysql://%s:%s@%s/%s" % (db_params_dict['db_username'], db_params_dict['db_password'], db_params_dict['db_host'], cls.db_name)
+    def _mysql_url(cls, db_params):
+        return f'mysql+pymysql://{db_params.db_username}:{db_params.db_password}@{db_params.db_host}/{cls.db_name}'
 
     def session(self):
         """Return a databse session."""
@@ -78,10 +91,10 @@ class DB(object):
             session.close()
 
     @classmethod
-    def delete_db(cls, db_params_dict):
-        """Delete a databse."""
-        delete_func = getattr(cls, '_%s_delete' % db_params_dict['db_type'])
-        delete_func(db_params_dict)
+    def delete_db(cls, db_params):
+        """Delete a database."""
+        delete_func = getattr(cls, f'_{db_params.db_type}_delete')
+        delete_func(db_params)
 
 
 #
@@ -463,7 +476,7 @@ class DBObject(object):
     def __get_time_col_func(cls, session, col, stat_func, start_ts=None, end_ts=None):
         result = (
             cls.s_query(session, cls.time_from_secs(stat_func(cls._secs_from_time(col))),
-                       None, start_ts, end_ts, cls._secs_from_time(col)).scalar()
+                        None, start_ts, end_ts, cls._secs_from_time(col)).scalar()
         )
         return datetime.datetime.strptime(result, '%H:%M:%S').time() if result is not None else datetime.time.min
 

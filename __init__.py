@@ -8,7 +8,7 @@ __license__ = "GPL"
 
 import version
 import utilities.list_and_dict as list_and_dict
-from utilities.db import DB, DBObject
+from utilities.db import DbParams, DB, DBObject
 from utilities.key_value import KeyValueObject
 from utilities.db_version import DbVersionObject
 from utilities.key_value import KeyValueObject

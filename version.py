@@ -23,12 +23,12 @@ def display(program, version):
 
 def log(program, version):
     """Print version information for the script."""
-    logger.info('%s %s' % (program, version))
+    logger.info('%s %s', program, version)
 
 
 def python_version_check(program, required, tested):
     """Validate the Python version requirements."""
     if sys.version_info < required:
-        raise Exception('%s requires Python %s or greater' % (program, to_string(required)))
+        raise Exception(f'{program} requires Python {to_string(required)} or greater')
     if sys.version_info != tested:
-        logger.info('%s has been tested on Python %s' % (program, to_string(tested)))
+        logger.info('%s has been tested on Python %s', program, to_string(tested))

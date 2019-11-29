@@ -64,7 +64,6 @@ class KeyValueObject(db.DBObject):
                 return instance.value
         except Exception:
             cls.logger.warning("%s::get failed to get %s: %s", cls.__name__, key, traceback.format_exc())
-            return None
 
     @classmethod
     def get_int(cls, db, key):
@@ -79,4 +78,4 @@ class KeyValueObject(db.DBObject):
         try:
             return datetime.datetime.strptime(cls.get(db, key), "%H:%M:%S").time()
         except Exception:
-            return None
+            pass

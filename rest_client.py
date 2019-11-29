@@ -13,17 +13,17 @@ import enum
 class RestException(Exception):
     """Exception caught while making REST calls."""
 
-    def __init__(self, e, error):
+    def __init__(self, e, error, printable_fields=[]):
         """Create a new instance of the RestException class."""
-        self.data = {
-            'inner_exception'   : e,
-            'error'             : error
-        }
-        Exception.__init__(self)
+        self.printable_fields = ['inner_exception', 'error'] + printable_fields
+        self.inner_exception = e
+        self.error = error
+        super().__init__()
 
     def __repr__(self):
         """Return a string representation of a RestException instance."""
-        return f'<{self.__class__.__name__}() {repr(self.data)}>'
+        fields = {printable_field : getattr(self, printable_field) for printable_field in self.printable_fields}
+        return f'<{self.__class__.__name__}() {repr(fields)}>'
 
     def __str__(self):
         """Return a string representation of a RestException instance."""
@@ -35,8 +35,8 @@ class RestCallException(RestException):
 
     def __init__(self, e, url, response, error):
         """Create a new instance of the RestException class."""
-        super().__init__(e, error)
-        self.data['url'] = url
+        super().__init__(e, error, ['url', 'response'])
+        self.url = url
         self.response = response
 
 
@@ -45,8 +45,8 @@ class RestResponseException(RestException):
 
     def __init__(self, e, response, error):
         """Create a new instance of the RestException class."""
-        super().__init__(e, error)
-        self.data['response'] = response
+        super().__init__(e, error, ['response'])
+        self.response = response
 
 
 class RestProtocol(enum.Enum):
@@ -103,11 +103,10 @@ class RestClient(object):
         try:
             response = self.session.get(self.url(leaf_route), headers=total_headers, params=params)
             response.raise_for_status()
+            return response
         except Exception as e:
-            if response.status_code in ignore_errors:
-                return
-            raise RestCallException(e, leaf_route, response, f'GET {response.url} failed ({response.status_code}): {response.text}')
-        return response
+            if response.status_code not in ignore_errors:
+                raise RestCallException(e, leaf_route, response, f'GET {response.url} failed ({response.status_code}): {response.text}')
 
     def post(self, leaf_route, aditional_headers, params, data):
         """Make a REST API call using the POST method."""
@@ -116,9 +115,9 @@ class RestClient(object):
         try:
             response = self.session.post(self.url(leaf_route), headers=total_headers, params=params, data=data)
             response.raise_for_status()
+            return response
         except Exception as e:
             raise RestCallException(e, leaf_route, f'POST {response.url} failed ({response.status_code}): {response.text}')
-        return response
 
     @classmethod
     def __convert_to_json(cls, object):
