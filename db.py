@@ -30,6 +30,13 @@ class DbParams(object):
             raise Exception('db_type is a required parameter')
         self.__dict__.update(kwargs)
 
+    def __repr__(self):
+        """Return a string representation of a DbParams instance."""
+        return f'<{self.__class__.__name__}() {repr(self.__dict__)}'
+
+    def __str__(self):
+        return self.__repr__()
+
 
 class DB(object):
     """Object representing a database."""
@@ -95,6 +102,13 @@ class DB(object):
         """Delete a database."""
         delete_func = getattr(cls, f'_{db_params.db_type}_delete')
         delete_func(db_params)
+
+    def __repr__(self):
+        """Return a string representation of a DB instance."""
+        return f'<{self.__class__.__name__}() {repr(self.db_param)}'
+
+    def __str__(self):
+        return self.__repr__()
 
 
 #
