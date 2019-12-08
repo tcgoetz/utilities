@@ -8,10 +8,15 @@ __license__ = "GPL"
 class Location(object):
     """Object representing a geographic location."""
 
-    def __init__(self, lat_deg, long_deg):
+    def __init__(self, lat_deg=None, long_deg=None, location=None):
         """Return a Location instance created with the passed in latitude and longitude."""
-        self.lat_deg = float(lat_deg) if lat_deg is not None else None
-        self.long_deg = float(long_deg) if long_deg is not None else None
+        if lat_deg is not None and long_deg is not None:
+            self.lat_deg = float(lat_deg) if lat_deg is not None else None
+            self.long_deg = float(long_deg) if long_deg is not None else None
+        elif location is not None:
+            (self.lat_deg, self.long_deg) = location
+        else:
+            raise Exception("No location supplied")
 
     @classmethod
     def from_objs(cls, lat_obj, long_obj):
