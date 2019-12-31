@@ -128,7 +128,7 @@ class DBObject(object):
         """Return a SQL phrase for rounding an optionally aliasing a column."""
         if alt_col_name is None:
             alt_col_name = col_name
-        return literal_column('ROUND(%s, %d) AS %s%s ' % (col_name, places, alt_col_name, seperator))
+        return literal_column(f'ROUND({col_name}, {places}) AS {alt_col_name}{seperator} ')
 
     @classmethod
     def round_col(cls, col_name, alt_col_name=None, places=1):
@@ -219,7 +219,7 @@ class DBObject(object):
     @classmethod
     def delete_view(cls, db, view_name=None):
         """Delete a database view with name view_name."""
-        cls.__delete_view(db, view_name if view_name is not None else cls.get_default_view_name())
+        cls.__delete_view(db, view_name if view_name is not None else cls._get_default_view_name())
 
     @classmethod
     def __create_view_if_not_exists(cls, session, view_name, query_str):
@@ -232,15 +232,19 @@ class DBObject(object):
             cls.__create_view_if_not_exists(session, view_name, query_str)
 
     @classmethod
-    def create_join_view(cls, db, view_name, selectable, join_table, order_by):
+    def create_join_view(cls, db, view_name, selectable, join_table, filter_by=None, order_by=None):
         """Create a database view named view_name if ti doesn't already exist."""
         with db.managed_session() as session:
-            query = Query(selectable, session=session).join(join_table).order_by(order_by)
+            query = Query(selectable, session=session).join(join_table)
+            if filter_by is not None:
+                query = query.filter(filter_by)
+            if order_by is not None:
+                query = query.order_by(order_by)
             cls.__create_view_if_not_exists(session, view_name, str(query))
 
     @classmethod
     def create_multi_join_view(cls, db, view_name, selectable, joins, order_by):
-        """Create a database view named view_name if ti doesn't already exist."""
+        """Create a database view named view_name if it doesn't already exist."""
         with db.managed_session() as session:
             query = Query(selectable, session=session)
             for (join_table, join_clause) in joins:
