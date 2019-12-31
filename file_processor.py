@@ -34,7 +34,7 @@ class FileProcessor(object):
 
     @classmethod
     def dir_to_files(cls, input_dir, file_regex, latest=False, recursive=False):
-        """Search a directory, p[ossibly recursively, and return a list of all files matching a regex."""
+        """Search a directory, possibly recursively, and return a list of all files matching a regex."""
         cls.logger.debug("Reading directory: %s looking for %s", input_dir, file_regex)
         file_names = []
         latest_threshold = datetime.datetime.now() - datetime.timedelta(1)
