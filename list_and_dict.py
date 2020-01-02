@@ -5,6 +5,11 @@ __copyright__ = "Copyright Tom Goetz"
 __license__ = "GPL"
 
 
+def list_not_none(inlist):
+    """Filter None values froma list."""
+    return [item for item in inlist if item is not None]
+
+
 def list_in_list(list1, list2):
     """Test if all items in list1 are present in list2."""
     for list_item in list1:
