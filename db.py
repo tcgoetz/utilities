@@ -408,7 +408,7 @@ class DBObject(object):
         query = cls.s_query(session, selectable, cls.time_col, start_ts, end_ts)
         if not_none_col is not None:
             # filter does not use 'is not None'
-            query = query.filter(not_none_col != None)
+            query = query.filter(not_none_col != None)  # noqa
         return query.all()
 
     @classmethod
