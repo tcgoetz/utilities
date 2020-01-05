@@ -202,11 +202,11 @@ class DBObject(object):
             if col.name == name:
                 return col
 
-    def update_from_dict(self, values_dict, ignore_none=False):
+    def update_from_dict(self, values_dict, ignore_none=False, ignore_zero=False):
         """Update a DB object instance from values in a dict by matching the dict keys to DB object attributes."""
         col_names = self.get_col_names()
         for key, value in values_dict.items():
-            if (not ignore_none or value is not None) and key in col_names:
+            if (not ignore_none or value is not None) and (not ignore_zero or value != 0) and key in col_names:
                 set_attribute(self, key, value)
         return self
 
@@ -306,10 +306,10 @@ class DBObject(object):
             cls.s_find_or_create(session, values_dict)
 
     @classmethod
-    def s_create_or_update(cls, session, values_dict, ignore_none=False):
+    def s_create_or_update(cls, session, values_dict, ignore_none=False, ignore_zero=False):
         instance = cls.s_find_one(session, values_dict)
         if instance:
-            instance.update_from_dict(values_dict, ignore_none)
+            instance.update_from_dict(values_dict, ignore_none, ignore_zero)
         else:
             session.add(cls(**values_dict))
 
