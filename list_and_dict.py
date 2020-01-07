@@ -6,8 +6,13 @@ __license__ = "GPL"
 
 
 def list_not_none(inlist):
-    """Filter None values froma list."""
+    """Filter None values from a list."""
     return [item for item in inlist if item is not None]
+
+
+def list_zero_for_none(inlist):
+    """Replace None values in a list with zeros."""
+    return [item if item is not None else 0 for item in inlist]
 
 
 def list_in_list(list1, list2):
