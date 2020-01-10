@@ -459,7 +459,7 @@ class DBObject(object):
             return cls.s_get_col_avg(session, col, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
-    def _get_col_min(cls, session, col, start_ts=None, end_ts=None, ignore_le_zero=False):
+    def s_get_col_min(cls, session, col, start_ts=None, end_ts=None, ignore_le_zero=False):
         """Return the minimum value in a column filtered by criteria."""
         return cls.s_get_col_func_query(session, col, func.min, start_ts, end_ts, col if ignore_le_zero else None).scalar()
 
@@ -470,7 +470,7 @@ class DBObject(object):
             return cls.s_get_col_func_query(session, col, func.min, start_ts, end_ts, col if ignore_le_zero else None).scalar()
 
     @classmethod
-    def _get_col_max(cls, session, col, start_ts=None, end_ts=None, ignore_le_zero=False):
+    def s_get_col_max(cls, session, col, start_ts=None, end_ts=None, ignore_le_zero=False):
         """Return the maximum value in a column filtered by criteria."""
         return cls.s_get_col_func_query(session, col, func.max, start_ts, end_ts, ignore_le_zero).scalar()
 
@@ -666,7 +666,7 @@ class DBObject(object):
         return cls.get_col_func_for_value(db, col, func.avg, match_col, match_value, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
-    def s_get_col_min_for_value(cls, session, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
+    def ss_get_col_min_for_value(cls, session, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
         return cls._get_col_func_for_value(session, col, func.min, match_col, match_value, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
@@ -674,7 +674,7 @@ class DBObject(object):
         return cls.get_col_func_for_value(db, col, func.min, match_col, match_value, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
-    def s_get_col_max_for_value(cls, session, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
+    def ss_get_col_max_for_value(cls, session, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
         return cls._get_col_func_for_value(session, col, func.max, match_col, match_value, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
