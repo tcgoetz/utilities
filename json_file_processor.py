@@ -7,7 +7,7 @@ __license__ = "GPL"
 import json
 import logging
 import traceback
-import progressbar
+from tqdm import tqdm
 
 from utilities.file_processor import FileProcessor
 
@@ -97,7 +97,7 @@ class JsonFileProcessor(object):
 
     def _process_files(self):
         self.root_logger.info("Processing %d json files", self.file_count())
-        for file_name in progressbar.progressbar(self.file_names):
+        for file_name in tqdm(self.file_names, unit='files'):
             try:
                 json_data = self.__parse_file(file_name)
                 updates = self._process_json(json_data)
