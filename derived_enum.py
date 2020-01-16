@@ -38,7 +38,7 @@ def _from_string(cls, string):
 
 def derive(name, parent_enum, names_and_values_dict, prefix=''):
     """Return a new Enum with the names and values of the parent enum added to the supplied dict's name and values."""
-    all_names_and_values = {prefix + p.name : p.value for p in parent_enum}
+    all_names_and_values = {prefix + p.name: p.value for p in parent_enum}
     all_names_and_values.update(names_and_values_dict)
     new_enum = enum.Enum(name, names=all_names_and_values)
     setattr(new_enum, 'prefix', prefix)

@@ -10,10 +10,10 @@ import datetime
 import logging
 from sqlalchemy import Column, String, DateTime
 
-from utilities import db
+from utilities import db_object
 
 
-class KeyValueObject(db.DBObject):
+class KeyValueObject(db_object.DBObject):
     """Base class for implementing key-value databse objects."""
 
     logger = logging.getLogger(__name__)
@@ -21,9 +21,6 @@ class KeyValueObject(db.DBObject):
     timestamp = Column(DateTime)
     key = Column(String, primary_key=True)
     value = Column(String)
-
-    time_col_name = 'timestamp'
-    match_col_names = ['key']
 
     @classmethod
     def s_find_one(cls, session, values_dict):
@@ -40,7 +37,7 @@ class KeyValueObject(db.DBObject):
         """Set a key-value pair in the database if the timestamp is newer than the one in the database."""
         item = cls.s_find_one(session, {'key' : key})
         if item is None or item.timestamp < timestamp:
-            cls.s_create_or_update(session, {'timestamp' : timestamp, 'key' : key, 'value' : str(value)})
+            cls.s_insert_or_update(session, {'timestamp' : timestamp, 'key' : key, 'value' : str(value)})
 
     @classmethod
     def set_newer(cls, db, key, value, timestamp=datetime.datetime.now()):
