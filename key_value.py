@@ -5,7 +5,6 @@ __copyright__ = "Copyright Tom Goetz"
 __license__ = "GPL"
 
 
-import traceback
 import datetime
 import logging
 from sqlalchemy import Column, String, DateTime
@@ -23,19 +22,14 @@ class KeyValueObject(db_object.DBObject):
     value = Column(String)
 
     @classmethod
-    def s_find_one(cls, session, values_dict):
-        """Find a table row that matches the values in the values_dict."""
-        return session.query(cls).filter(cls.key == values_dict['key']).one_or_none()
-
-    @classmethod
     def set(cls, db, key, value, timestamp=datetime.datetime.now()):
         """Set a key-value pair in the database."""
-        cls.create_or_update(db, {'timestamp' : timestamp, 'key' : key, 'value' : str(value)})
+        cls.insert_or_update(db, {'timestamp' : timestamp, 'key' : key, 'value' : str(value)})
 
     @classmethod
     def s_set_newer(cls, session, key, value, timestamp=datetime.datetime.now()):
         """Set a key-value pair in the database if the timestamp is newer than the one in the database."""
-        item = cls.s_find_one(session, {'key' : key})
+        item = cls.s_get(session, key)
         if item is None or item.timestamp < timestamp:
             cls.s_insert_or_update(session, {'timestamp' : timestamp, 'key' : key, 'value' : str(value)})
 
@@ -52,27 +46,28 @@ class KeyValueObject(db_object.DBObject):
         return cls.find_or_create(db, {'timestamp' : timestamp, 'key' : key, 'value' : str(value)})
 
     @classmethod
-    def get(cls, db, key):
-        """Get a key-value pair from the database."""
-        cls.logger.debug("%s::get %s", cls.__name__, key)
-        try:
-            with db.managed_session() as session:
-                instance = cls.s_find_one(session, {'key' : key})
-                return instance.value
-        except Exception:
-            cls.logger.warning("%s::get failed to get %s: %s", cls.__name__, key, traceback.format_exc())
+    def s_get_from_dict(cls, session, values_dict):
+        """Return a single activity instance for the given id."""
+        return cls.s_get(session, values_dict['key'])
+
+    @classmethod
+    def get_type(cls, db, type_func, key):
+        """Get a key-integer pair from the database."""
+        instance = cls.get(db, key)
+        if instance is not None and instance.value is not None:
+            try:
+                return type_func(instance.value)
+            except Exception as e:
+                cls.logger.error("Failed to convert value from %r: %s", instance, e)
 
     @classmethod
     def get_int(cls, db, key):
-        """Get a key-integer pair from the database."""
-        value = cls.get(db, key)
-        if value is not None:
-            return int(value)
+        """Get a integer from the database."""
+        return cls.get_type(db, int, key)
 
     @classmethod
     def get_time(cls, db, key):
-        """Get a key-time pair from the database."""
-        try:
-            return datetime.datetime.strptime(cls.get(db, key), "%H:%M:%S").time()
-        except Exception:
-            pass
+        """Get a time from the database."""
+        def _convert(value):
+            return datetime.datetime.strptime(value, "%H:%M:%S").time()
+        return cls.get_type(db, _convert, key)

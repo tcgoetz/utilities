@@ -26,7 +26,6 @@ class DBObject():
     db_views = []
     get_col_name = None
     time_col_name = None
-    match_col_names = None
 
     @classmethod
     def __init_subclass__(cls, **kwargs):
@@ -45,6 +44,7 @@ class DBObject():
 
     @classmethod
     def setup_table_vars(cls):
+        cls.col_names = [col.name for col in cls.__table__.columns]
         for col in cls.__table__._columns:
             if col.primary_key:
                 logger.info("Found get_col_name %s for table %s", col.name, cls.__name__)
@@ -114,23 +114,10 @@ class DBObject():
     def _get_default_view_name(cls):
         return cls.__tablename__ + '_view'
 
-    @classmethod
-    def get_col_names(cls):
-        """Return the column names of the database object."""
-        return [col.name for col in cls.__table__.columns]
-
-    @classmethod
-    def get_col_by_name(cls, name):
-        """Return the column object given the column name."""
-        for col in cls.__table__._columns:
-            if col.name == name:
-                return col
-
     def update_from_dict(self, values_dict, ignore_none=False, ignore_zero=False):
         """Update a DB object instance from values in a dict by matching the dict keys to DB object attributes."""
-        col_names = self.get_col_names()
         for key, value in values_dict.items():
-            if (not ignore_none or value is not None) and (not ignore_zero or value != 0) and key in col_names:
+            if (not ignore_none or value is not None) and (not ignore_zero or value != 0) and key in self.col_names:
                 set_attribute(self, key, value)
         return self
 
@@ -186,7 +173,7 @@ class DBObject():
     @classmethod
     def intersection(cls, values_dict):
         """Return the dict elements whose keys are column names."""
-        return filter_dict_by_list(values_dict, cls.get_col_names())
+        return filter_dict_by_list(values_dict, cls.col_names)
 
     @classmethod
     def s_get(cls, session, instance_id):
@@ -203,27 +190,6 @@ class DBObject():
     def s_get_from_dict(cls, session, values_dict):
         """Return a single activity instance for the given id."""
         return cls.s_get(session, values_dict[cls.get_col_name])
-
-    @classmethod
-    def s_find_one(cls, session, values_dict):
-        """Find a table row that matches the values in the values_dict."""
-        query = session.query(cls)
-        if cls.match_col_names is not None:
-            for match_col_name in cls.match_col_names:
-                if match_col_name in values_dict:
-                    query = query.filter(cls.get_col_by_name(match_col_name) == values_dict[match_col_name])
-                else:
-                    query = query.filter(cls.get_col_by_name(match_col_name) == None)  # noqa
-        else:
-            query = query.filter(cls.time_col == values_dict[cls.time_col_name])
-        query = query.filter(cls.time_col == values_dict[cls.time_col_name])
-        return query.one_or_none()
-
-    @classmethod
-    def find_one(cls, db, values_dict):
-        """Find a table row that matches the values in the values_dict."""
-        with db.managed_session() as session:
-            return cls.s_find_one(session, values_dict)
 
     @classmethod
     def s_find_match(cls, session, match_dict):
@@ -245,15 +211,16 @@ class DBObject():
             return cls.s_find_id(session, values_dict)
 
     @classmethod
-    def s_find_or_create(cls, session, values_dict):
-        if cls.s_find_one(session, values_dict) is None:
+    def s_find_or_create(cls, session, values_dict, ignore_none=True, ignore_zero=False):
+        instance = cls.s_get_from_dict(session, values_dict)
+        if not instance:
             session.add(cls(**values_dict))
 
     @classmethod
-    def find_or_create(cls, db, values_dict):
-        """Find a table row that matched the values in the values_dict. Create a row if not found."""
+    def find_or_create(cls, db, values_dict, ignore_none=False):
+        """Create a database record if it doesn't exist. Update it if does exist."""
         with db.managed_session() as session:
-            cls.s_find_or_create(session, values_dict)
+            cls.s_find_or_create(session, values_dict, ignore_none)
 
     @classmethod
     def s_insert_or_update(cls, session, values_dict, ignore_none=True, ignore_zero=False):
@@ -268,20 +235,6 @@ class DBObject():
         """Create a database record if it doesn't exist. Update it if does exist."""
         with db.managed_session() as session:
             cls.s_insert_or_update(session, values_dict, ignore_none)
-
-    @classmethod
-    def s_create_or_update(cls, session, values_dict, ignore_none=False, ignore_zero=False):
-        instance = cls.s_find_one(session, values_dict)
-        if instance:
-            instance.update_from_dict(values_dict, ignore_none, ignore_zero)
-        else:
-            session.add(cls(**values_dict))
-
-    @classmethod
-    def create_or_update(cls, db, values_dict, ignore_none=False):
-        """Create a database record if it doesn't exist. Update it if does exist."""
-        with db.managed_session() as session:
-            cls.s_create_or_update(session, values_dict, ignore_none)
 
     @classmethod
     def _secs_from_time(cls, col):
@@ -705,5 +658,5 @@ class DBObject():
     def __repr__(self):
         """Return a string representation of a DBObject instance."""
         classname = self.__class__.__name__
-        values = {col_name : getattr(self, col_name) for col_name in self.get_col_names()}
+        values = {col_name : getattr(self, col_name) for col_name in self.col_names}
         return ("<%s() %r>" % (classname, values))

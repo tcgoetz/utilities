@@ -53,8 +53,17 @@ class DB(object):
         url_func = getattr(self, f'_{db_params.db_type}_url')
         self.engine = create_engine(url_func(self.db_params), echo=(debug > 1))
         self.session_maker = sessionmaker(bind=self.engine, expire_on_commit=False)
+        self.Base.metadata.create_all(self.engine)
+        self.version = self._DbVersion()
+        # now init this DBs tables
         for table in self.db_tables:
             table.setup(self)
+        # now we can do checks
+        self.version.version_check(self, self.db_version)
+        for table in self.db_tables:
+            self.version.table_version_check(self, table)
+            if not self.version.view_version_check(self, table):
+                table.delete_view(self)
 
     @classmethod
     def add_table(cls, table):
