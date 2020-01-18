@@ -22,11 +22,11 @@ class DbParams(object):
     def __init__(self, **kwargs):
         if 'db_type' not in kwargs:
             raise Exception('db_type is a required parameter')
-        self.__dict__.update(kwargs)
+        vars(self).update(kwargs)
 
     def __repr__(self):
         """Return a string representation of a DbParams instance."""
-        return f'<{self.__class__.__name__}() {repr(self.__dict__)}'
+        return f'<{self.__class__.__name__}() {repr(vars(self))}'
 
     def __str__(self):
         return self.__repr__()

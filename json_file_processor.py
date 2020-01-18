@@ -67,13 +67,12 @@ class JsonFileProcessor(object):
         except KeyError as e:
             self.logger.debug("JSON %s not found in %r: %s", fieldname, json, e)
 
-    def __convert_to_json(self, object):
-        return object.__str__()
-
     def _save_json_file(self, json_full_filname, json_data):
+        def __convert_to_json(object):
+            return str(object)
         with open(json_full_filname, 'w') as file:
             self.logger.info("_save_json_file: %s", json_full_filname)
-            file.write(json.dumps(json_data, default=self.__convert_to_json))
+            file.write(json.dumps(json_data, default=__convert_to_json))
 
     def _process_json(self, json_data):
         """Implement this function in a subclass to handle saving a JSON blob to a DB."""
