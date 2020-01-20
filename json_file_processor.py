@@ -37,6 +37,7 @@ class JsonFileProcessor(object):
         if input_dir:
             self.file_names = FileProcessor.dir_to_files(input_dir, file_regex, latest, recursive)
             self.logger.info("Found %d json files for %s in %s", self.file_count(), file_regex, input_dir)
+        self.total_updates = 0
 
     def file_count(self):
         """Return the number of files that will be proccessed."""
@@ -101,13 +102,14 @@ class JsonFileProcessor(object):
                 json_data = self.__parse_file(file_name)
                 updates = self._process_json(json_data)
                 if updates > 0:
-                    self.logger.debug("DB updated with %d entries from %s", updates, file_name)
+                    self.logger.info("DB updated with %d entries from %s", updates, file_name)
+                    self.total_updates += updates
                 else:
                     self.logger.warning("No data saved for %s", file_name)
             except Exception:
                 self.logger.error("Failed to parse %s: %s", file_name, traceback.format_exc())
             self._commit()
-        self.logger.info("DB updated with %d entries.", self.file_count())
+        self.logger.info("DB updated with %d entries from %d files.", self.total_updates, self.file_count())
 
     def process(self):
         """Import files into the database."""
