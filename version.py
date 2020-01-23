@@ -16,9 +16,9 @@ def to_string(version_info, prerelease=False):
     return '.'.join(str(digit) for digit in version_info) + ' pre' if prerelease else ''
 
 
-def display(program, version):
-    """Print version information for the script."""
-    print('%s %s' % (program, version))
+def format(program, version):
+    """format version information for the script."""
+    return f'{program} {version}'
 
 
 def log(program, version):
