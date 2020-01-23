@@ -23,19 +23,21 @@ class FileProcessor(object):
     @classmethod
     def match_file(cls, input_file, file_regex):
         """Test if a file matches a regex."""
-        cls.logger.info("Matching file: " + input_file)
+        cls.logger.info("Matching file: %s", input_file)
         if cls.__regex_matches_file(input_file, file_regex):
             return [input_file]
         return []
 
     @classmethod
     def __file_newer_than(cls, file, timestamp):
-        return datetime.datetime.fromtimestamp(os.stat(file).st_ctime) > timestamp
+        file_time = datetime.datetime.fromtimestamp(os.stat(file).st_ctime)
+        cls.logger.debug("Is file %s newer? (%s vs %s)", file, file_time, timestamp)
+        return file_time > timestamp
 
     @classmethod
     def dir_to_files(cls, input_dir, file_regex, latest=False, recursive=False):
         """Search a directory, possibly recursively, and return a list of all files matching a regex."""
-        cls.logger.debug("Reading directory: %s looking for %s", input_dir, file_regex)
+        cls.logger.debug("Reading directory: %s looking for %s latest %s", input_dir, file_regex, latest)
         file_names = []
         latest_threshold = datetime.datetime.now() - datetime.timedelta(1)
         for file in os.listdir(input_dir):
