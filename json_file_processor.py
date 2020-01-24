@@ -30,7 +30,6 @@ class JsonFileProcessor(object):
 
         """
         self.debug = debug
-        self.logger.info("Debug: %s", debug)
         if input_file:
             self.file_names = FileProcessor.match_file(input_file, file_regex)
             self.logger.info("Found %d json files for %s in %s", self.file_count(), file_regex, input_file)
