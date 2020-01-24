@@ -47,7 +47,7 @@ class DBObject():
         cls.col_names = [col.name for col in cls.__table__.columns]
         for col in cls.__table__._columns:
             if col.primary_key:
-                logger.info("Found get_col_name %s for table %s", col.name, cls.__name__)
+                logger.info("Found primary key column %s for table %s", col.name, cls.__name__)
                 cls.get_col_name = col.name
                 if isinstance(col.type, DateTime) or isinstance(col.type, Date) or isinstance(col.type, Time):
                     logger.info("Found primary key time_col_name %s for table %s", col.name, cls.__name__)

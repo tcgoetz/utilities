@@ -31,15 +31,18 @@ class FileProcessor(object):
     @classmethod
     def __file_newer_than(cls, file, timestamp):
         file_time = datetime.datetime.fromtimestamp(os.stat(file).st_ctime)
-        cls.logger.debug("Is file %s newer? (%s vs %s)", file, file_time, timestamp)
+        cls.logger.info("Is file %s newer? (%s vs %s)", file, file_time, timestamp)
         return file_time > timestamp
 
     @classmethod
     def dir_to_files(cls, input_dir, file_regex, latest=False, recursive=False):
         """Search a directory, possibly recursively, and return a list of all files matching a regex."""
-        cls.logger.debug("Reading directory: %s looking for %s latest %s", input_dir, file_regex, latest)
         file_names = []
-        latest_threshold = datetime.datetime.now() - datetime.timedelta(1)
+        latest_threshold = datetime.datetime.now() - datetime.timedelta(days=1)
+        if latest:
+            cls.logger.info("Reading directory: %s looking for files matching %s and created after %s", input_dir, file_regex, latest_threshold)
+        else:
+            cls.logger.info("Reading directory: %s looking for files matching %s", input_dir, file_regex)
         for file in os.listdir(input_dir):
             file_with_path = input_dir + "/" + file
             if recursive and os.path.isdir(file_with_path):
