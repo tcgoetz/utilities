@@ -31,7 +31,7 @@ class FileProcessor(object):
     @classmethod
     def __file_newer_than(cls, file, timestamp):
         file_time = datetime.datetime.fromtimestamp(os.stat(file).st_mtime)
-        cls.logger.info("Is file %s newer? (%s vs %s)", file, file_time, timestamp)
+        cls.logger.debug("Is file %s newer? (%s vs %s)", file, file_time, timestamp)
         return file_time > timestamp
 
     @classmethod
