@@ -130,10 +130,14 @@ class DBObject():
     @classmethod
     def delete_view(cls, db, view_name=None):
         """Delete a database view with name view_name."""
-        cls.__delete_view(db, view_name if view_name is not None else cls._get_default_view_name())
+        if view_name is None:
+            view_name = cls._get_default_view_name()
+        logger.info("Deleted join view %s", view_name)
+        cls.__delete_view(db, view_name)
 
     @classmethod
     def __create_view_if_not_exists(cls, session, view_name, query_str):
+        logger.info("Created join view %s using query %s", view_name, query_str)
         session.execute('CREATE VIEW IF NOT EXISTS ' + view_name + ' AS ' + query_str)
 
     @classmethod
