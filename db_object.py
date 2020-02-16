@@ -322,6 +322,22 @@ class DBObject():
             return session.query(cls).all()
 
     @classmethod
+    def s_get_for_period_where(cls, session, start_ts, end_ts, selectable=None, where=None):
+        """Return all DB records matching the selection criteria."""
+        if selectable is None:
+            selectable = cls
+        query = cls.s_query(session, selectable, cls.time_col, start_ts, end_ts)
+        if where is not None:
+            query = query.filter(where)
+        return query.all()
+
+    @classmethod
+    def get_for_period_where(cls, db, start_ts, end_ts, selectable=None, where=None):
+        """Return all DB records matching the selection criteria."""
+        with db.managed_session() as session:
+            return cls.s_get_for_period_where(session, start_ts, end_ts, selectable, where)
+
+    @classmethod
     def s_get_for_period(cls, session, start_ts, end_ts, selectable=None, not_none_col=None):
         """Return all DB records matching the selection criteria."""
         if selectable is None:
@@ -456,6 +472,15 @@ class DBObject():
     @classmethod
     def get_time_col_sum(cls, db, col, start_ts=None, end_ts=None):
         return cls.get_time_col_func(db, col, func.sum, start_ts, end_ts)
+
+    @classmethod
+    def get_col_latest_where(cls, db, col, where_clauses):
+        """Return the most recent value for the given column."""
+        with db.managed_session() as session:
+            query = session.query(col)
+            for where_clause in where_clauses:
+                query = query.filter(where_clause)
+            return query.order_by(desc(cls.time_col)).limit(1).scalar()
 
     @classmethod
     def get_col_latest(cls, db, col, ignore_le_zero=False):
