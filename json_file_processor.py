@@ -16,12 +16,14 @@ class JsonFileProcessor(object):
     """Class for parsing JSON formatted health data into a database."""
 
     logger = logging.getLogger()
+    conversions = None
 
     def __init__(self, file_regex, input_file=None, input_dir=None, latest=True, debug=False, recursive=False):
         """
         Return an instance of JsonFileProcessor.
 
         Parameters:
+        ----------
             input_file (string): file (full path) to check for data
             input_dir (string): directory (full path) to check for data files
             latest (Boolean): check for latest files only
@@ -76,7 +78,7 @@ class JsonFileProcessor(object):
 
     def _process_json(self, json_data):
         """Implement this function in a subclass to handle saving a JSON blob to a DB."""
-        pass
+        return 0
 
     def _commit(self):
         """Implement this function in a subclass to handle DB commits per file processed."""
