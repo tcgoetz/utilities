@@ -36,14 +36,15 @@ class DBObject():
 
     @classmethod
     def setup(cls, db):
+        """Initialize per table data."""
         # print(f'setup {cls.__name__}')
         if cls.time_col_name is None:
-            cls.setup_table_vars()
+            cls.__setup_table_vars()
         if hasattr(cls, 'create_view'):
             cls.create_view(db)
 
     @classmethod
-    def setup_table_vars(cls):
+    def __setup_table_vars(cls):
         cls.col_names = [col.name for col in cls.__table__.columns]
         for col in cls.__table__._columns:
             if col.primary_key:
@@ -216,18 +217,20 @@ class DBObject():
 
     @classmethod
     def s_find_or_create(cls, session, values_dict, ignore_none=True, ignore_zero=False):
+        """Create a database record with the passed in data if it doesn't exist."""
         instance = cls.s_get_from_dict(session, values_dict)
         if not instance:
             session.add(cls(**values_dict))
 
     @classmethod
     def find_or_create(cls, db, values_dict, ignore_none=False):
-        """Create a database record if it doesn't exist. Update it if does exist."""
+        """Create a database record with the passed in data if it doesn't exist."""
         with db.managed_session() as session:
             cls.s_find_or_create(session, values_dict, ignore_none)
 
     @classmethod
     def s_insert_or_update(cls, session, values_dict, ignore_none=True, ignore_zero=False):
+        """Create a database record if it doesn't exist. Update it if does exist."""
         instance = cls.s_get_from_dict(session, values_dict)
         if instance:
             instance.update_from_dict(values_dict, ignore_none, ignore_zero)
@@ -245,63 +248,69 @@ class DBObject():
         return func.strftime('%s', col) - func.strftime('%s', '00:00')
 
     @classmethod
-    def time_from_secs(cls, value):
+    def _time_from_secs(cls, value):
         return func.time(value, 'unixepoch')
 
     @classmethod
-    def row_to_int(cls, row):
+    def _row_to_int(cls, row):
         return int(row[0])
 
     @classmethod
-    def row_to_int_not_none(cls, row):
+    def _row_to_int_not_none(cls, row):
         if row[0] is not None:
-            return cls.row_to_int(row)
+            return cls._row_to_int(row)
 
     @classmethod
-    def rows_to_ints(cls, rows):
-        return [cls.row_to_int(row) for row in rows]
+    def _rows_to_ints(cls, rows):
+        return [cls._row_to_int(row) for row in rows]
 
     @classmethod
-    def rows_to_ints_not_none(cls, rows):
-        return [cls.row_to_int_not_none(row) for row in rows]
+    def _rows_to_ints_not_none(cls, rows):
+        return [cls._row_to_int_not_none(row) for row in rows]
 
     @classmethod
-    def row_to_month(cls, row):
+    def _row_to_month(cls, row):
         return datetime.date(1900, row, 1).strftime("%b")
 
     @classmethod
-    def rows_to_months(cls, rows):
-        return [cls.row_to_month(row) for row in rows]
+    def _rows_to_months(cls, rows):
+        return [cls._row_to_month(row) for row in rows]
 
     @classmethod
     def get_years(cls, db):
+        """Return a list of the unique years present in the time column."""
         with db.managed_session() as session:
-            return cls.rows_to_ints_not_none(session.query(extract('year', cls.time_col)).distinct().all())
+            return cls._rows_to_ints_not_none(session.query(extract('year', cls.time_col)).distinct().all())
 
     @classmethod
-    def _get_months(cls, session, year):
-        return cls.rows_to_ints_not_none(session.query(extract('month', cls.time_col)).filter(extract('year', cls.time_col) == str(year)).distinct().all())
+    def s_get_months(cls, session, year):
+        """Return a list of months as indexes, for the given year, present in the table."""
+        return cls._rows_to_ints_not_none(session.query(extract('month', cls.time_col)).filter(extract('year', cls.time_col) == str(year)).distinct().all())
 
     @classmethod
     def get_months(cls, db, year):
+        """Return a list of months as indexes, for the given year, present in the table."""
         with db.managed_session() as session:
-            return cls._get_months(session, year)
+            return cls.s_get_months(session, year)
 
     @classmethod
     def get_month_names(cls, db, year):
-        return cls.rows_to_months(cls.get_months(db, year))
+        """Return the names of months present in the table for the given year."""
+        return cls._rows_to_months(cls.get_months(db, year))
 
     @classmethod
     def s_get_days(cls, session, year):
-        return cls.rows_to_ints(session.query(func.strftime("%j", cls.time_col)).filter(extract('year', cls.time_col) == str(year)).distinct().all())
+        """Return a list of days as indexes, for the given year, present in the table."""
+        return cls._rows_to_ints(session.query(func.strftime("%j", cls.time_col)).filter(extract('year', cls.time_col) == str(year)).distinct().all())
 
     @classmethod
     def get_days(cls, db, year):
+        """Return a list of days as indexes, for the given year, present in the table."""
         with db.managed_session() as session:
             return cls.s_get_days(session, year)
 
     @classmethod
-    def s_query(cls, session, selectable, order_by=None, start_ts=None, end_ts=None, ignore_le_zero_col=None):
+    def _s_query(cls, session, selectable, order_by=None, start_ts=None, end_ts=None, ignore_le_zero_col=None):
         query = session.query(selectable)
         if order_by is not None:
             query = query.order_by(order_by)
@@ -326,7 +335,7 @@ class DBObject():
         """Return all DB records matching the selection criteria."""
         if selectable is None:
             selectable = cls
-        query = cls.s_query(session, selectable, cls.time_col, start_ts, end_ts)
+        query = cls._s_query(session, selectable, cls.time_col, start_ts, end_ts)
         if where is not None:
             query = query.filter(where)
         return query.all()
@@ -342,7 +351,7 @@ class DBObject():
         """Return all DB records matching the selection criteria."""
         if selectable is None:
             selectable = cls
-        query = cls.s_query(session, selectable, cls.time_col, start_ts, end_ts)
+        query = cls._s_query(session, selectable, cls.time_col, start_ts, end_ts)
         if not_none_col is not None:
             # filter does not use 'is not None'
             query = query.filter(not_none_col != None)  # noqa
@@ -372,22 +381,22 @@ class DBObject():
     def get_col_values(cls, db, get_col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
         """Return the values from a column possibly filtered by time period."""
         with db.managed_session() as session:
-            return cls.s_query(session, get_col, cls.time_col, start_ts, end_ts, ignore_le_zero).filter(match_col == match_value).all()
+            return cls._s_query(session, get_col, cls.time_col, start_ts, end_ts, ignore_le_zero).filter(match_col == match_value).all()
 
     @classmethod
-    def s_get_col_func_query(cls, session, col, func, start_ts=None, end_ts=None, ignore_le_zero=False):
-        return cls.s_query(session, func(col), None, start_ts, end_ts, col if ignore_le_zero else None)
+    def _s_get_col_func_query(cls, session, col, func, start_ts=None, end_ts=None, ignore_le_zero=False):
+        return cls._s_query(session, func(col), None, start_ts, end_ts, col if ignore_le_zero else None)
 
     @classmethod
     def get_col_distinct(cls, db, col, start_ts=None, end_ts=None):
         """Return the set of distinct value from a column possibly filtered by time period."""
         with db.managed_session() as session:
-            return [row[0] for row in cls.s_get_col_func_query(session, col, func.distinct, start_ts, end_ts).all()]
+            return [row[0] for row in cls._s_get_col_func_query(session, col, func.distinct, start_ts, end_ts).all()]
 
     @classmethod
     def s_get_col_avg(cls, session, col, start_ts=None, end_ts=None, ignore_le_zero=False):
         """Return the average value of a column filtered by criteria."""
-        return cls.s_get_col_func_query(session, col, func.avg, start_ts, end_ts, col if ignore_le_zero else None).scalar()
+        return cls._s_get_col_func_query(session, col, func.avg, start_ts, end_ts, col if ignore_le_zero else None).scalar()
 
     @classmethod
     def get_col_avg(cls, db, col, start_ts=None, end_ts=None, ignore_le_zero=False):
@@ -398,29 +407,29 @@ class DBObject():
     @classmethod
     def s_get_col_min(cls, session, col, start_ts=None, end_ts=None, ignore_le_zero=False):
         """Return the minimum value in a column filtered by criteria."""
-        return cls.s_get_col_func_query(session, col, func.min, start_ts, end_ts, col if ignore_le_zero else None).scalar()
+        return cls._s_get_col_func_query(session, col, func.min, start_ts, end_ts, col if ignore_le_zero else None).scalar()
 
     @classmethod
     def get_col_min(cls, db, col, start_ts=None, end_ts=None, ignore_le_zero=False):
         """Return the minimum value in a column filtered by criteria."""
         with db.managed_session() as session:
-            return cls.s_get_col_func_query(session, col, func.min, start_ts, end_ts, col if ignore_le_zero else None).scalar()
+            return cls._s_get_col_func_query(session, col, func.min, start_ts, end_ts, col if ignore_le_zero else None).scalar()
 
     @classmethod
     def s_get_col_max(cls, session, col, start_ts=None, end_ts=None, ignore_le_zero=False):
         """Return the maximum value in a column filtered by criteria."""
-        return cls.s_get_col_func_query(session, col, func.max, start_ts, end_ts, ignore_le_zero).scalar()
+        return cls._s_get_col_func_query(session, col, func.max, start_ts, end_ts, ignore_le_zero).scalar()
 
     @classmethod
     def get_col_max(cls, db, col, start_ts=None, end_ts=None, ignore_le_zero=False):
         """Return the maximum value in a column filtered by criteria."""
         with db.managed_session() as session:
-            return cls.s_get_col_func_query(session, col, func.max, start_ts, end_ts, ignore_le_zero).scalar()
+            return cls._s_get_col_func_query(session, col, func.max, start_ts, end_ts, ignore_le_zero).scalar()
 
     @classmethod
     def s_get_col_sum(cls, session, col, start_ts=None, end_ts=None):
         """Return the sum of a column filtered by criteria."""
-        return cls.s_get_col_func_query(session, col, func.sum, start_ts, end_ts).scalar()
+        return cls._s_get_col_func_query(session, col, func.sum, start_ts, end_ts).scalar()
 
     @classmethod
     def get_col_sum(cls, db, col, start_ts=None, end_ts=None):
@@ -429,49 +438,54 @@ class DBObject():
             return cls.s_get_col_sum(session, col, start_ts, end_ts)
 
     @classmethod
-    def __get_time_col_func(cls, session, col, stat_func, start_ts=None, end_ts=None):
-        result = (
-            cls.s_query(session, cls.time_from_secs(stat_func(cls._secs_from_time(col))),
-                        None, start_ts, end_ts, cls._secs_from_time(col)).scalar()
-        )
+    def _s_get_time_col_func(cls, session, col, stat_func, start_ts=None, end_ts=None):
+        result = cls._s_query(session, cls._time_from_secs(stat_func(cls._secs_from_time(col))), None, start_ts, end_ts, cls._secs_from_time(col)).scalar()
         return datetime.datetime.strptime(result, '%H:%M:%S').time() if result is not None else datetime.time.min
 
     @classmethod
-    def get_time_col_func(cls, db, col, stat_func, start_ts=None, end_ts=None):
+    def _get_time_col_func(cls, db, col, stat_func, start_ts=None, end_ts=None):
         with db.managed_session() as session:
-            return cls.__get_time_col_func(session, col, stat_func, start_ts, end_ts)
+            return cls._s_get_time_col_func(session, col, stat_func, start_ts, end_ts)
 
     @classmethod
     def s_get_time_col_avg(cls, session, col, start_ts=None, end_ts=None):
-        return cls.__get_time_col_func(session, col, func.avg, start_ts, end_ts)
+        """Return the average value, from the time period defined by the given two datetime value, of a column, with time format."""
+        return cls._s_get_time_col_func(session, col, func.avg, start_ts, end_ts)
 
     @classmethod
     def get_time_col_avg(cls, db, col, start_ts=None, end_ts=None):
-        return cls.get_time_col_func(db, col, func.avg, start_ts, end_ts)
+        """Return the average value, from the time period defined by the given two datetime value, of a column, with time format."""
+        return cls._get_time_col_func(db, col, func.avg, start_ts, end_ts)
 
     @classmethod
     def s_get_time_col_min(cls, session, col, start_ts=None, end_ts=None):
-        return cls.__get_time_col_func(session, col, func.min, start_ts, end_ts)
+        """Return the minimum value, from the time period defined by the given two datetime value, of a column, with time format."""
+        return cls._s_get_time_col_func(session, col, func.min, start_ts, end_ts)
 
     @classmethod
     def get_time_col_min(cls, db, col, start_ts=None, end_ts=None):
-        return cls.get_time_col_func(db, col, func.min, start_ts, end_ts)
+        """Return the minimum value, from the time period defined by the given two datetime value, of a column, with time format."""
+        return cls._get_time_col_func(db, col, func.min, start_ts, end_ts)
 
     @classmethod
     def s_get_time_col_max(cls, session, col, start_ts=None, end_ts=None):
-        return cls.__get_time_col_func(session, col, func.max, start_ts, end_ts)
+        """Return the maximum value, from the time period defined by the given two datetime value, of a column, with time format."""
+        return cls._s_get_time_col_func(session, col, func.max, start_ts, end_ts)
 
     @classmethod
     def get_time_col_max(cls, db, col, start_ts=None, end_ts=None):
-        return cls.get_time_col_func(db, col, func.max, start_ts, end_ts)
+        """Return the maximum value, from the time period defined by the given two datetime value, of a column, with time format."""
+        return cls._get_time_col_func(db, col, func.max, start_ts, end_ts)
 
     @classmethod
     def s_get_time_col_sum(cls, session, col, start_ts=None, end_ts=None):
-        return cls.__get_time_col_func(session, col, func.sum, start_ts, end_ts)
+        """Return the sum of values, from the time period defined by the given two datetime value, of a column, with time format."""
+        return cls._s_get_time_col_func(session, col, func.sum, start_ts, end_ts)
 
     @classmethod
     def get_time_col_sum(cls, db, col, start_ts=None, end_ts=None):
-        return cls.get_time_col_func(db, col, func.sum, start_ts, end_ts)
+        """Return the sum of values, from the time period defined by the given two datetime value, of a column, with time format."""
+        return cls._get_time_col_func(db, col, func.sum, start_ts, end_ts)
 
     @classmethod
     def get_col_latest_where(cls, db, col, where_clauses):
@@ -555,10 +569,12 @@ class DBObject():
 
     @classmethod
     def latest_time(cls, db, not_zero_col):
+        """Return the time value of the most recent entry in the table."""
         return cls.get_col_max_greater_than_value(db, cls.time_col, not_zero_col, 0)
 
     @classmethod
     def row_count(cls, db, col=None, col_value=None):
+        """Return the number of rows, with matching column values if supplied, in the table."""
         with db.managed_session() as session:
             query = session.query(cls)
             if col is not None:
@@ -567,70 +583,74 @@ class DBObject():
 
     @classmethod
     def s_row_count_for_period(cls, session, start_ts, end_ts):
+        """Return the number of rows in the table in the period defined by the two datetimes."""
         return session.query(cls).filter(cls.time_col >= start_ts).filter(cls.time_col < end_ts).count()
 
     @classmethod
     def row_count_for_period(cls, db, start_ts, end_ts):
+        """Return the number of rows in the table in the period defined by the two datetimes."""
         with db.managed_session() as session:
             return cls.s_row_count_for_period(session, start_ts, end_ts)
 
     @classmethod
     def s_row_count_for_day(cls, session, day_date):
+        """Return the number of rows in the table in the given day."""
         start_ts = datetime.datetime.combine(day_date, datetime.time.min)
         end_ts = start_ts + datetime.timedelta(days=1)
         return cls.s_row_count_for_period(session, start_ts, end_ts)
 
     @classmethod
     def row_count_for_day(cls, db, day_date):
+        """Return the number of rows in the table in the given day."""
         start_ts = datetime.datetime.combine(day_date, datetime.time.min)
         end_ts = start_ts + datetime.timedelta(days=1)
         return cls.row_count_for_period(db, start_ts, end_ts)
 
     @classmethod
-    def _get_col_func_for_value(cls, session, col, stat_func, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
-        return cls.s_query(session, stat_func(col), None, start_ts, end_ts, col if ignore_le_zero else None).filter(match_col == match_value).scalar()
+    def _s_get_col_func_for_value(cls, session, col, stat_func, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
+        return cls._s_query(session, stat_func(col), None, start_ts, end_ts, col if ignore_le_zero else None).filter(match_col == match_value).scalar()
 
     @classmethod
-    def get_col_func_for_value(cls, db, col, stat_func, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
+    def _get_col_func_for_value(cls, db, col, stat_func, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
         with db.managed_session() as session:
-            return cls.s_query(session, stat_func(col), None, start_ts, end_ts, col if ignore_le_zero else None).filter(match_col == match_value).scalar()
+            return cls._s_query(session, stat_func(col), None, start_ts, end_ts, col if ignore_le_zero else None).filter(match_col == match_value).scalar()
 
     @classmethod
     def _get_col_sum_for_value(cls, session, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
-        return cls._get_col_func_for_value(session, col, func.sum, match_col, match_value, start_ts, end_ts, ignore_le_zero)
+        return cls._s_get_col_func_for_value(session, col, func.sum, match_col, match_value, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
     def get_col_sum_for_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
-        return cls.get_col_func_for_value(db, col, func.sum, match_col, match_value, start_ts, end_ts, ignore_le_zero)
+        return cls._get_col_func_for_value(db, col, func.sum, match_col, match_value, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
     def s_get_col_avg_for_value(cls, session, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
-        return cls._get_col_func_for_value(session, col, func.avg, match_col, match_value, start_ts, end_ts, ignore_le_zero)
+        return cls._s_get_col_func_for_value(session, col, func.avg, match_col, match_value, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
     def get_col_avg_for_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
-        return cls.get_col_func_for_value(db, col, func.avg, match_col, match_value, start_ts, end_ts, ignore_le_zero)
+        return cls._get_col_func_for_value(db, col, func.avg, match_col, match_value, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
     def s_get_col_min_for_value(cls, session, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
-        return cls._get_col_func_for_value(session, col, func.min, match_col, match_value, start_ts, end_ts, ignore_le_zero)
+        return cls._s_get_col_func_for_value(session, col, func.min, match_col, match_value, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
     def get_col_min_for_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
-        return cls.get_col_func_for_value(db, col, func.min, match_col, match_value, start_ts, end_ts, ignore_le_zero)
+        return cls._get_col_func_for_value(db, col, func.min, match_col, match_value, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
     def s_get_col_max_for_value(cls, session, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
-        return cls._get_col_func_for_value(session, col, func.max, match_col, match_value, start_ts, end_ts, ignore_le_zero)
+        return cls._s_get_col_func_for_value(session, col, func.max, match_col, match_value, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
     def get_col_max_for_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
-        return cls.get_col_func_for_value(db, col, func.max, match_col, match_value, start_ts, end_ts, ignore_le_zero)
+        return cls._get_col_func_for_value(db, col, func.max, match_col, match_value, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
     def get_col_func_greater_than_value(cls, db, col, stat_func, match_col, match_value, start_ts=None, end_ts=None):
         with db.managed_session() as session:
-            return cls.s_query(session, stat_func(col), None, start_ts, end_ts).filter(match_col > match_value).scalar()
+            return cls._s_query(session, stat_func(col), None, start_ts, end_ts).filter(match_col > match_value).scalar()
 
     @classmethod
     def get_col_avg_greater_than_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None):
@@ -643,7 +663,7 @@ class DBObject():
     @classmethod
     def get_col_func_less_than_value(cls, db, col, stat_func, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
         with db.managed_session() as session:
-            return cls.s_query(session, stat_func(col), None, start_ts, end_ts, col if ignore_le_zero else None).filter(match_col < match_value).scalar()
+            return cls._s_query(session, stat_func(col), None, start_ts, end_ts, col if ignore_le_zero else None).filter(match_col < match_value).scalar()
 
     @classmethod
     def get_col_avg_less_than_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):

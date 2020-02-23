@@ -17,7 +17,7 @@ def to_string(version_info, prerelease=False):
 
 
 def format(program, version):
-    """format version information for the script."""
+    """Format version information for the script."""
     return f'{program} {version}'
 
 

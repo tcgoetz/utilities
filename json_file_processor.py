@@ -24,6 +24,7 @@ class JsonFileProcessor(object):
 
         Parameters:
         ----------
+            file_regex (string): only process files that match this regex
             input_file (string): file (full path) to check for data
             input_dir (string): directory (full path) to check for data files
             latest (Boolean): check for latest files only

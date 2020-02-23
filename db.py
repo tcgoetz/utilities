@@ -20,6 +20,7 @@ class DbParams(object):
     """Holds parameters for attaching to a database."""
 
     def __init__(self, **kwargs):
+        """Return a DbParams instance with passed in kwargs as attributes."""
         if 'db_type' not in kwargs:
             raise Exception('db_type is a required parameter')
         vars(self).update(kwargs)
@@ -40,6 +41,7 @@ class DB(object):
         Return an instance a databse access class.
 
         Parameters:
+        ----------
             db_params (dict): config data for accessing the database
             debug (Boolean): enable debug logging
 
@@ -67,6 +69,7 @@ class DB(object):
 
     @classmethod
     def add_table(cls, table):
+        """Add a table to the list of tables in this database."""
         cls.db_tables.append(table)
 
     @classmethod
@@ -90,7 +93,7 @@ class DB(object):
         return f'mysql+pymysql://{db_params.db_username}:{db_params.db_password}@{db_params.db_host}/{cls.db_name}'
 
     def session(self):
-        """Return a databse session."""
+        """Return a database session."""
         return self.session_maker()
 
     @contextmanager
