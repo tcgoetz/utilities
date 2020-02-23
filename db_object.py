@@ -170,7 +170,7 @@ class DBObject():
             cls.__create_view_if_not_exists(session, view_name, str(query))
 
     @classmethod
-    def create_view_from_selectable(cls, db, view_name, selectable, order_by):
+    def _create_view_from_selectable(cls, db, view_name, selectable, order_by):
         with db.managed_session() as session:
             query = Query(selectable, session=session).order_by(order_by)
             cls.__create_view_if_not_exists(session, view_name, str(query))
@@ -510,11 +510,12 @@ class DBObject():
 
     @classmethod
     def get_time_col_latest(cls, db, col):
+        """Return the most recent value for the given column with time format."""
         with db.managed_session() as session:
             return session.query(col).filter(cls._secs_from_time(col) > 0).order_by(desc(cls.time_col)).limit(1).scalar()
 
     @classmethod
-    def s_get_col_func_of_max_per_day_for_value(cls, session, col, stat_func, start_ts, end_ts, match_col=None, match_value=None):
+    def _s_get_col_func_of_max_per_day_for_value(cls, session, col, stat_func, start_ts, end_ts, match_col=None, match_value=None):
         max_daily_query = (
             session.query(func.max(col).label('maxes')).filter(cls.during(start_ts, end_ts)).group_by(func.strftime("%j", cls.time_col))
         )
@@ -523,29 +524,29 @@ class DBObject():
         return session.query(stat_func(max_daily_query.subquery().columns.maxes)).scalar()
 
     @classmethod
-    def get_col_func_of_max_per_day_for_value(cls, db, col, stat_func, start_ts, end_ts, match_col=None, match_value=None):
+    def _get_col_func_of_max_per_day_for_value(cls, db, col, stat_func, start_ts, end_ts, match_col=None, match_value=None):
         with db.managed_session() as session:
-            return cls.s_get_col_func_of_max_per_day_for_value(session, col, stat_func, start_ts, end_ts, match_col, match_value)
+            return cls._s_get_col_func_of_max_per_day_for_value(session, col, stat_func, start_ts, end_ts, match_col, match_value)
 
     @classmethod
     def get_col_sum_of_max_per_day_for_value(cls, db, col, match_col, match_value, start_ts, end_ts):
-        return cls.get_col_func_of_max_per_day_for_value(db, col, func.sum, start_ts, end_ts, match_col, match_value)
+        return cls._get_col_func_of_max_per_day_for_value(db, col, func.sum, start_ts, end_ts, match_col, match_value)
 
     @classmethod
     def s_get_col_avg_of_max_per_day_for_value(cls, session, col, match_col, match_value, start_ts, end_ts):
-        return cls.s_get_col_func_of_max_per_day_for_value(session, col, func.avg, start_ts, end_ts, match_col, match_value)
+        return cls._s_get_col_func_of_max_per_day_for_value(session, col, func.avg, start_ts, end_ts, match_col, match_value)
 
     @classmethod
     def get_col_avg_of_max_per_day_for_value(cls, db, col, match_col, match_value, start_ts, end_ts):
-        return cls.get_col_func_of_max_per_day_for_value(db, col, func.avg, start_ts, end_ts, match_col, match_value)
+        return cls._get_col_func_of_max_per_day_for_value(db, col, func.avg, start_ts, end_ts, match_col, match_value)
 
     @classmethod
     def s_get_col_func_of_max_per_day(cls, session, col, stat_func, start_ts, end_ts):
-        return cls.s_get_col_func_of_max_per_day_for_value(session, col, func.sum, start_ts, end_ts)
+        return cls._s_get_col_func_of_max_per_day_for_value(session, col, func.sum, start_ts, end_ts)
 
     @classmethod
     def get_col_func_of_max_per_day(cls, db, col, stat_func, start_ts, end_ts):
-        return cls.get_col_func_of_max_per_day_for_value(db, col, func.sum, start_ts, end_ts)
+        return cls._get_col_func_of_max_per_day_for_value(db, col, func.sum, start_ts, end_ts)
 
     @classmethod
     def s_get_col_sum_of_max_per_day(cls, session, col, start_ts, end_ts):
@@ -621,14 +622,17 @@ class DBObject():
 
     @classmethod
     def get_col_sum_for_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
+        """Return the sum of column values limited by row where match_col has match_value and are in time period defined by start_ts and end_ts."""
         return cls._get_col_func_for_value(db, col, func.sum, match_col, match_value, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
     def s_get_col_avg_for_value(cls, session, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
+        """Return the average of column values limited by row where match_col has match_value and are in time period defined by start_ts and end_ts."""
         return cls._s_get_col_func_for_value(session, col, func.avg, match_col, match_value, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
     def get_col_avg_for_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
+        """Return the average of column values limited by row where match_col has match_value and are in time period defined by start_ts and end_ts."""
         return cls._get_col_func_for_value(db, col, func.avg, match_col, match_value, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
@@ -641,41 +645,48 @@ class DBObject():
 
     @classmethod
     def s_get_col_max_for_value(cls, session, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
+        """Return the maximum of column values limited by row where match_col has match_value and are in time period defined by start_ts and end_ts."""
         return cls._s_get_col_func_for_value(session, col, func.max, match_col, match_value, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
     def get_col_max_for_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
+        """Return the maximum of column values limited by row where match_col has match_value and are in time period defined by start_ts and end_ts."""
         return cls._get_col_func_for_value(db, col, func.max, match_col, match_value, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
-    def get_col_func_greater_than_value(cls, db, col, stat_func, match_col, match_value, start_ts=None, end_ts=None):
+    def _get_col_func_greater_than_value(cls, db, col, stat_func, match_col, match_value, start_ts=None, end_ts=None):
         with db.managed_session() as session:
             return cls._s_query(session, stat_func(col), None, start_ts, end_ts).filter(match_col > match_value).scalar()
 
     @classmethod
     def get_col_avg_greater_than_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None):
-        return cls.get_col_func_greater_than_value(db, col, func.avg, match_col, match_value, start_ts, end_ts)
+        """Return the average of column values limited by row where match_col is greater than match_value and are in time period defined by start_ts and end_ts."""
+        return cls._get_col_func_greater_than_value(db, col, func.avg, match_col, match_value, start_ts, end_ts)
 
     @classmethod
     def get_col_max_greater_than_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None):
-        return cls.get_col_func_greater_than_value(db, col, func.max, match_col, match_value, start_ts, end_ts)
+        """Return the maximum of column values limited by row where match_col is greater than match_value and are in time period defined by start_ts and end_ts."""
+        return cls._get_col_func_greater_than_value(db, col, func.max, match_col, match_value, start_ts, end_ts)
 
     @classmethod
-    def get_col_func_less_than_value(cls, db, col, stat_func, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
+    def _get_col_func_less_than_value(cls, db, col, stat_func, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
         with db.managed_session() as session:
             return cls._s_query(session, stat_func(col), None, start_ts, end_ts, col if ignore_le_zero else None).filter(match_col < match_value).scalar()
 
     @classmethod
     def get_col_avg_less_than_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
-        return cls.get_col_func_less_than_value(db, col, func.avg, match_col, match_value, start_ts, end_ts, ignore_le_zero)
+        """Return the average of column values limited by row where match_col is less than match_value and are in time period defined by start_ts and end_ts."""
+        return cls._get_col_func_less_than_value(db, col, func.avg, match_col, match_value, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
     def get_col_min_less_than_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
-        return cls.get_col_func_less_than_value(db, col, func.min, match_col, match_value, start_ts, end_ts, ignore_le_zero)
+        """Return the minimum of column values limited by row where match_col is less than match_value and are in time period defined by start_ts and end_ts."""
+        return cls._get_col_func_less_than_value(db, col, func.min, match_col, match_value, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
     def get_col_max_less_than_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
-        return cls.get_col_func_less_than_value(db, col, func.max, match_col, match_value, start_ts, end_ts, ignore_le_zero)
+        """Return the maximum of column values limited by row where match_col is less than match_value and are in time period defined by start_ts and end_ts."""
+        return cls._get_col_func_less_than_value(db, col, func.max, match_col, match_value, start_ts, end_ts, ignore_le_zero)
 
     @classmethod
     def get_daily_stats(cls, session, day_ts):
