@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class DBObject():
-    """Base class for implementing database objects."""
+    """Base class for implementing database table objects."""
 
     db_views = []
     get_col_name = None
@@ -63,16 +63,9 @@ class DBObject():
             cls.time_col = synonym(cls.time_col_name)
 
     @classmethod
-    def round_col_text(cls, col_name, alt_col_name=None, places=1, seperator=','):
-        """Return a SQL phrase for rounding an optionally aliasing a column."""
-        if alt_col_name is None:
-            alt_col_name = col_name
-        return literal_column(f'ROUND({col_name}, {places}) AS {alt_col_name}{seperator} ')
-
-    @classmethod
     def round_col(cls, col_name, alt_col_name=None, places=1):
-        """Return a SQL phrase for rounding an optionally aliasing a column."""
-        return cls.round_col_text(col_name, alt_col_name, places, seperator='')
+        """Return a SQL phrase for rounding and optionally aliasing a column."""
+        return literal_column(f'ROUND({col_name}, {places}) AS {alt_col_name if alt_col_name else col_name} ')
 
     @declared_attr
     def col_count(cls):

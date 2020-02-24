@@ -36,24 +36,24 @@ class DbParams(object):
 class DB(object):
     """Object representing a database."""
 
-    def __init__(self, db_params, debug=False):
+    def __init__(self, db_params, debug_level=0):
         """
         Return an instance a databse access class.
 
         Parameters:
         ----------
             db_params (dict): config data for accessing the database
-            debug (Boolean): enable debug logging
+            debug_level (int): 0 is no logging, higher is more logging
 
         """
-        logger.info("%s: %r debug: %s ", self.__class__.__name__, db_params, debug)
-        if debug > 0:
+        logger.info("%s: %r debug: %s ", self.__class__.__name__, db_params, debug_level)
+        if debug_level > 0:
             logger.setLevel(logging.DEBUG)
         else:
             logger.setLevel(logging.INFO)
         self.db_params = db_params
         url_func = getattr(self, f'_{db_params.db_type}_url')
-        self.engine = create_engine(url_func(self.db_params), echo=(debug > 1))
+        self.engine = create_engine(url_func(self.db_params), echo=(debug_level > 1))
         self.session_maker = sessionmaker(bind=self.engine, expire_on_commit=False)
         self.Base.metadata.create_all(self.engine)
         self.version = self._DbVersion()
