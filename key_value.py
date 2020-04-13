@@ -51,23 +51,37 @@ class KeyValueObject(db_object.DBObject):
         return cls.s_get(session, values_dict['key'])
 
     @classmethod
-    def get_type(cls, db, type_func, key):
+    def get_type(cls, db, type_func, key, default=None):
         """Get a key-integer pair from the database."""
         instance = cls.get(db, key)
-        if instance is not None and instance.value is not None:
-            try:
-                return type_func(instance.value)
-            except Exception as e:
-                cls.logger.error("Failed to convert value from %r: %s", instance, e)
+        if instance is not None:
+            if instance.value is not None:
+                try:
+                    return type_func(instance.value)
+                except Exception as e:
+                    cls.logger.error("Failed to convert value from %r: %s", instance, e)
+            else:
+                return None
+        return default
 
     @classmethod
-    def get_int(cls, db, key):
+    def get_string(cls, db, key, default=None):
+        """Get a string from the database."""
+        return cls.get_type(db, str, key, default)
+
+    @classmethod
+    def get_int(cls, db, key, default=None):
         """Get a integer from the database."""
-        return cls.get_type(db, int, key)
+        return cls.get_type(db, int, key, default)
 
     @classmethod
-    def get_time(cls, db, key):
+    def get_float(cls, db, key, default=None):
+        """Get a float from the database."""
+        return cls.get_type(db, float, key, default)
+
+    @classmethod
+    def get_time(cls, db, key, default=None):
         """Get a time from the database."""
         def _convert(value):
             return datetime.datetime.strptime(value, "%H:%M:%S").time()
-        return cls.get_type(db, _convert, key)
+        return cls.get_type(db, _convert, key, default)

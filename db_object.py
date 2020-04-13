@@ -174,15 +174,18 @@ class DBObject():
         return filter_dict_by_list(values_dict, cls.col_names)
 
     @classmethod
-    def s_get(cls, session, instance_id):
+    def s_get(cls, session, instance_id, default=None):
         """Return a single instance for the given id."""
-        return session.query(cls).get(instance_id)
+        instance = session.query(cls).get(instance_id)
+        if instance is None:
+            return default
+        return instance
 
     @classmethod
-    def get(cls, db, instance_id):
+    def get(cls, db, instance_id, default=None):
         """Return a single instance for the given id."""
         with db.managed_session() as session:
-            return cls.s_get(session, instance_id)
+            return cls.s_get(session, instance_id, default)
 
     @classmethod
     def s_get_from_dict(cls, session, values_dict):
