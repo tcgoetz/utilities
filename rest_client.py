@@ -117,7 +117,7 @@ class RestClient(object):
             response.raise_for_status()
             return response
         except Exception as e:
-            raise RestCallException(e, leaf_route, f'POST {response.url} failed ({response.status_code}): {response.text}')
+            raise RestCallException(e, leaf_route, response, f'POST {response.url} failed ({response.status_code}): {response.text}')
 
     @classmethod
     def __convert_to_json(cls, object):
