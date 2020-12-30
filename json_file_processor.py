@@ -8,8 +8,10 @@ import json
 import logging
 import traceback
 from tqdm import tqdm
+import dateutil.parser
 
 from utilities.file_processor import FileProcessor
+from utilities.conversions import epoch_ms_to_dt
 
 
 class JsonFileProcessor(object):
@@ -40,6 +42,17 @@ class JsonFileProcessor(object):
             self.file_names = FileProcessor.dir_to_files(input_dir, file_regex, latest, recursive)
             self.logger.info("Found %d json files for %s in %s", self.file_count(), file_regex, input_dir)
         self.total_updates = 0
+
+    def _parse_date(self, date_str):
+        """Return a datetime object for the given date string."""
+        # Try parsing the date as an epoch first
+        try:
+            return epoch_ms_to_dt(date_str)
+        except Exception:
+            try:
+                return dateutil.parser.parse(date_str)
+            except Exception as e:
+                self.logger.info("Failed to parse date %s: %s", date_str, e)
 
     def file_count(self):
         """Return the number of files that will be proccessed."""
