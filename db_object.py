@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 class DBObject():
     """Base class for implementing database table objects."""
 
+    db = None
     db_views = []
     get_col_name = None
     time_col_name = None
@@ -31,7 +32,7 @@ class DBObject():
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         # print(f'__init_subclass__ {cls.__name__}')
-        if hasattr(cls, 'db'):
+        if hasattr(cls, 'db') and cls.db is not None:
             cls.db.add_table(cls)
 
     @classmethod
