@@ -17,10 +17,12 @@ class DynamicDb(DB):
     """Object representing a database for storing health data from a Garmin device."""
 
     @classmethod
-    def Create(cls, name, version):
+    def Create(cls, name, version, doc=None):
         """Create a dynamic database class."""
         def class_exec(namespace):
             namespace['db_name'] = name
+            if doc:
+                namespace['__doc__'] = doc
             namespace['db_version'] = int(version)
             namespace['db_tables'] = []
             base = declarative_base()
@@ -29,7 +31,7 @@ class DynamicDb(DB):
         return types.new_class(name + "Db", bases=(DB,), exec_body=class_exec)
 
     @classmethod
-    def CreateTable(cls, name, db, version, pk, cols):
+    def CreateTable(cls, name, db, version, pk=None, cols={}, base=DBObject):
         """Create a tables in a dynamic database class."""
         def class_exec(namespace):
             namespace['__tablename__'] = name
@@ -40,4 +42,4 @@ class DynamicDb(DB):
                     namespace[colname] = Column(coltype, primary_key=True)
                 else:
                     namespace[colname] = Column(coltype)
-        return types.new_class(name, bases=(db.Base, DBObject), exec_body=class_exec)
+        return types.new_class(name, bases=(db.Base, base), exec_body=class_exec)
