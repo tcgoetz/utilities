@@ -5,12 +5,17 @@ __copyright__ = "Copyright Tom Goetz"
 __license__ = "GPL"
 
 import types
+import logging
 from sqlalchemy import Column
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import PrimaryKeyConstraint
 
 from utilities.db import DB
 from utilities.db_object import DBObject
 from utilities.db_version import DbVersionObject
+
+
+logger = logging.getLogger(__file__)
 
 
 class DynamicDb(DB):
@@ -28,6 +33,7 @@ class DynamicDb(DB):
             base = declarative_base()
             namespace['Base'] = base
             namespace['_DbVersion'] = types.new_class('_DbVersion', bases=(base, DbVersionObject))
+        logger.info("Creating DB class %s version %d", name, version)
         return types.new_class(name + "Db", bases=(DB,), exec_body=class_exec)
 
     @classmethod
@@ -37,9 +43,9 @@ class DynamicDb(DB):
             namespace['__tablename__'] = name
             namespace['db'] = db
             namespace['table_version'] = int(version)
+            if pk:
+                namespace['__table_args__'] = (PrimaryKeyConstraint(*pk),)
             for colname, coltype in cols.items():
-                if colname == pk:
-                    namespace[colname] = Column(coltype, primary_key=True)
-                else:
-                    namespace[colname] = Column(coltype)
+                namespace[colname] = Column(coltype)
+        logger.info("Creating table class %s version %d in db %s", name, version, db)
         return types.new_class(name, bases=(db.Base, base), exec_body=class_exec)

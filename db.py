@@ -117,7 +117,7 @@ class DB(object):
 
     def __repr__(self):
         """Return a string representation of a DB instance."""
-        return f'<{self.__class__.__name__}() {repr(self.db_param)}'
+        return f'<{self.__class__.__name__}() {repr(self.db_params)}'
 
     def __str__(self):
         return self.__repr__()

@@ -25,7 +25,6 @@ class DBObject():
 
     db = None
     db_views = []
-    get_col_name = None
     time_col_name = None
 
     @classmethod
@@ -47,9 +46,11 @@ class DBObject():
     @classmethod
     def __setup_table_vars(cls):
         cls.col_names = [col.name for col in cls.__table__.columns]
+        cls.primary_key_cols = {}
         for col in cls.__table__._columns:
             if col.primary_key:
                 logger.info("Found primary key column %s for table %s", col.name, cls.__name__)
+                cls.primary_key_cols[col.name] = synonym(col)
                 cls.get_col_name = col.name
                 if isinstance(col.type, DateTime) or isinstance(col.type, Date) or isinstance(col.type, Time):
                     logger.info("Found primary key time_col_name %s for table %s", col.name, cls.__name__)
@@ -64,7 +65,22 @@ class DBObject():
             cls.time_col = synonym(cls.time_col_name)
 
     @classmethod
+    def full_col_name(cls, col_name):
+        """Returns the fully qualified col name."""
+        return cls.__tablename__ + '.' + col_name
+
+    @classmethod
+    def round_ext_col(cls, table, col_name, alt_col_name=None, places=1):
+        """Return a SQL phrase for rounding and optionally aliasing a column from another table."""
+        return literal_column(f'ROUND({table.__tablename__ + "." + col_name}, {places}) AS {alt_col_name if alt_col_name else col_name} ')
+
+    @classmethod
     def round_col(cls, col_name, alt_col_name=None, places=1):
+        """Return a SQL phrase for rounding and optionally aliasing a column in this table."""
+        return cls.round_ext_col(cls, col_name, alt_col_name, places)
+
+    @classmethod
+    def round_col_txt(cls, col_name, alt_col_name=None, places=1):
         """Return a SQL phrase for rounding and optionally aliasing a column."""
         return literal_column(f'ROUND({col_name}, {places}) AS {alt_col_name if alt_col_name else col_name} ')
 
@@ -173,6 +189,15 @@ class DBObject():
     def intersection(cls, values_dict):
         """Return the dict elements whose keys are column names."""
         return filter_dict_by_list(values_dict, cls.col_names)
+
+    @classmethod
+    def s_exists(cls, session, values_dict):
+        """Return if a matching record exists in the database."""
+        logger.info("checking exists for %r with key %r for cols %r", cls, cls.primary_key_cols, cls.col_names)
+        query = session.query(cls)
+        for col_name, col in cls.primary_key_cols.items():
+            query = query.filter(col == values_dict[col_name])
+        return session.query(query.exists()).scalar()
 
     @classmethod
     def s_get(cls, session, instance_id, default=None):
