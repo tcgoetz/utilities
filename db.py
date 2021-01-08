@@ -58,11 +58,12 @@ class DB(object):
         self.Base.metadata.create_all(self.engine)
         self.version = self._DbVersion()
         # now init this DBs tables
-        for table in self.db_tables:
+        for table in self.db_tables.values():
             table.setup(self)
         # now we can do checks
         self.version.version_check(self, self.db_version)
-        for table in self.db_tables:
+        # and last setup table views
+        for table in self.db_tables.values():
             self.version.table_version_check(self, table)
             if not self.version.view_version_check(self, table):
                 table.delete_view(self)
@@ -70,7 +71,7 @@ class DB(object):
     @classmethod
     def add_table(cls, table):
         """Add a table to the list of tables in this database."""
-        cls.db_tables.append(table)
+        cls.db_tables[table.__name__] = table
 
     @classmethod
     def _sqlite_path(cls, db_params):

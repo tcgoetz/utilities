@@ -29,7 +29,7 @@ class DynamicDb(DB):
             if doc:
                 namespace['__doc__'] = doc
             namespace['db_version'] = int(version)
-            namespace['db_tables'] = []
+            namespace['db_tables'] = {}
             base = declarative_base()
             namespace['Base'] = base
             namespace['_DbVersion'] = types.new_class('_DbVersion', bases=(base, DbVersionObject))
@@ -37,15 +37,18 @@ class DynamicDb(DB):
         return types.new_class(name + "Db", bases=(DB,), exec_body=class_exec)
 
     @classmethod
-    def CreateTable(cls, name, db, version, pk=None, cols={}, base=DBObject):
+    def CreateTable(cls, name, db, version, pk=None, cols={}, base=DBObject, doc=None, vars={}):
         """Create a tables in a dynamic database class."""
         def class_exec(namespace):
+            if doc:
+                namespace['__doc__'] = doc
             namespace['__tablename__'] = name
             namespace['db'] = db
             namespace['table_version'] = int(version)
             if pk:
                 namespace['__table_args__'] = (PrimaryKeyConstraint(*pk),)
-            for colname, coltype in cols.items():
-                namespace[colname] = Column(coltype)
+            for colname, colargs in cols.items():
+                namespace[colname] = Column(*colargs.get('args', []), **colargs.get('kwargs', {}))
+            namespace.update(vars)
         logger.info("Creating table class %s version %d in db %s", name, version, db)
         return types.new_class(name, bases=(db.Base, base), exec_body=class_exec)

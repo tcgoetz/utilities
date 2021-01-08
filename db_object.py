@@ -30,14 +30,12 @@ class DBObject():
     @classmethod
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
-        # print(f'__init_subclass__ {cls.__name__}')
         if hasattr(cls, 'db') and cls.db is not None:
             cls.db.add_table(cls)
 
     @classmethod
     def setup(cls, db):
         """Initialize per table data."""
-        # print(f'setup {cls.__name__}')
         if cls.time_col_name is None:
             cls.__setup_table_vars()
         if hasattr(cls, 'create_view'):
@@ -63,11 +61,6 @@ class DBObject():
                     break
         if cls.time_col_name is not None:
             cls.time_col = synonym(cls.time_col_name)
-
-    @classmethod
-    def full_col_name(cls, col_name):
-        """Returns the fully qualified col name."""
-        return cls.__tablename__ + '.' + col_name
 
     @classmethod
     def round_ext_col(cls, table, col_name, alt_col_name=None, places=1):
