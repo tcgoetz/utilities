@@ -37,18 +37,26 @@ class DynamicDb(DB):
         return types.new_class(name + "Db", bases=(DB,), exec_body=class_exec)
 
     @classmethod
-    def CreateTable(cls, name, db, version, pk=None, cols={}, base=DBObject, doc=None, vars={}):
-        """Create a tables in a dynamic database class."""
+    def CreateTable(cls, name, db_class, version, pk=None, cols={}, base=DBObject, doc=None, create_view=None, vars={}):
+        """Create a table in a dynamic database class."""
         def class_exec(namespace):
             if doc:
                 namespace['__doc__'] = doc
             namespace['__tablename__'] = name
-            namespace['db'] = db
+            namespace['db'] = db_class
             namespace['table_version'] = int(version)
             if pk:
                 namespace['__table_args__'] = (PrimaryKeyConstraint(*pk),)
             for colname, colargs in cols.items():
                 namespace[colname] = Column(*colargs.get('args', []), **colargs.get('kwargs', {}))
+            if create_view:
+                namespace['create_view'] = create_view
             namespace.update(vars)
-        logger.info("Creating table class %s version %d in db %s", name, version, db)
-        return types.new_class(name, bases=(db.Base, base), exec_body=class_exec)
+        logger.info("Creating table class %s version %d cols %r in db %s", name, version, cols, db_class)
+        return types.new_class(name, bases=(db_class.Base, base), exec_body=class_exec)
+
+    @classmethod
+    def ActivateTable(cls, db, table_class):
+        """Activate a table in a dynamic database class."""
+        logger.info("Activating table class %s in db %s", table_class, db)
+        db.init_table(table_class)

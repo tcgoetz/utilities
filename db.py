@@ -57,21 +57,24 @@ class DB(object):
         self.session_maker = sessionmaker(bind=self.engine, expire_on_commit=False)
         self.Base.metadata.create_all(self.engine)
         self.version = self._DbVersion()
-        # now init this DBs tables
-        for table in self.db_tables.values():
-            table.setup(self)
         # now we can do checks
         self.version.version_check(self, self.db_version)
         # and last setup table views
         for table in self.db_tables.values():
-            self.version.table_version_check(self, table)
-            if not self.version.view_version_check(self, table):
-                table.delete_view(self)
+            self.init_table(table)
 
     @classmethod
     def add_table(cls, table):
         """Add a table to the list of tables in this database."""
         cls.db_tables[table.__name__] = table
+
+    def init_table(self, table):
+        """Initialize a table for this database."""
+        logger.info("%s: initializing table %s", self.__class__.__name__, table)
+        table.setup(self)
+        self.version.table_version_check(self, table)
+        if not self.version.view_version_check(self, table):
+            table.delete_view(self)
 
     @classmethod
     def _sqlite_path(cls, db_params):
