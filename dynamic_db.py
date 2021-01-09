@@ -33,7 +33,7 @@ class DynamicDb(DB):
             base = declarative_base()
             namespace['Base'] = base
             namespace['_DbVersion'] = types.new_class('_DbVersion', bases=(base, DbVersionObject))
-        logger.info("Creating DB class %s version %d", name, version)
+        logger.debug("Creating DB class %s version %d", name, version)
         return types.new_class(name + "Db", bases=(DB,), exec_body=class_exec)
 
     @classmethod
@@ -52,11 +52,11 @@ class DynamicDb(DB):
             if create_view:
                 namespace['create_view'] = create_view
             namespace.update(vars)
-        logger.info("Creating table class %s version %d cols %r in db %s", name, version, cols, db_class)
+        logger.debug("Creating table class %s version %d cols %r in db %s", name, version, cols, db_class)
         return types.new_class(name, bases=(db_class.Base, base), exec_body=class_exec)
 
     @classmethod
     def ActivateTable(cls, db, table_class):
         """Activate a table in a dynamic database class."""
-        logger.info("Activating table class %s in db %s", table_class, db)
+        logger.debug("Activating table class %s in db %s", table_class, db)
         db.init_table(table_class)

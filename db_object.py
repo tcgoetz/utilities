@@ -47,11 +47,11 @@ class DBObject():
         cls.primary_key_cols = {}
         for col in cls.__table__._columns:
             if col.primary_key:
-                logger.info("Found primary key column %s for table %s", col.name, cls.__name__)
+                logger.debug("Found primary key column %s for table %s", col.name, cls.__name__)
                 cls.primary_key_cols[col.name] = synonym(col)
                 cls.get_col_name = col.name
                 if isinstance(col.type, DateTime) or isinstance(col.type, Date) or isinstance(col.type, Time):
-                    logger.info("Found primary key time_col_name %s for table %s", col.name, cls.__name__)
+                    logger.debug("Found primary key time_col_name %s for table %s", col.name, cls.__name__)
                     cls.time_col_name = col.name
         if cls.time_col_name is None:
             for col in cls.__table__._columns:
@@ -141,7 +141,7 @@ class DBObject():
 
     @classmethod
     def __create_view_if_not_exists(cls, session, view_name, query_str):
-        logger.info("Created join view %s using query %s", view_name, query_str)
+        logger.debug("Created join view %s using query %s", view_name, query_str)
         session.execute('CREATE VIEW IF NOT EXISTS ' + view_name + ' AS ' + query_str)
 
     @classmethod
@@ -186,7 +186,6 @@ class DBObject():
     @classmethod
     def s_exists(cls, session, values_dict):
         """Return if a matching record exists in the database."""
-        logger.info("checking exists for %r with key %r for cols %r", cls, cls.primary_key_cols, cls.col_names)
         query = session.query(cls)
         for col_name, col in cls.primary_key_cols.items():
             query = query.filter(col == values_dict[col_name])

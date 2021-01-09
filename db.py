@@ -46,7 +46,7 @@ class DB(object):
             debug_level (int): 0 is no logging, higher is more logging
 
         """
-        logger.info("%s: %r debug: %s ", self.__class__.__name__, db_params, debug_level)
+        logger.debug("%s: %r debug: %s ", self.__class__.__name__, db_params, debug_level)
         if debug_level > 0:
             logger.setLevel(logging.DEBUG)
         else:
@@ -70,7 +70,7 @@ class DB(object):
 
     def init_table(self, table):
         """Initialize a table for this database."""
-        logger.info("%s: initializing table %s", self.__class__.__name__, table)
+        logger.debug("%s: initializing table %s", self.__class__.__name__, table)
         table.setup(self)
         self.version.table_version_check(self, table)
         if not self.version.view_version_check(self, table):
