@@ -6,7 +6,7 @@ all: deps
 
 test:
 
-test_commit: test
+verify_commit: test
 
 flake8:
 	flake8 *.py --max-line-length=180 --ignore=E203,E221,E241,W503
