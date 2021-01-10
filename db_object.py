@@ -15,9 +15,13 @@ from sqlalchemy.ext.hybrid import hybrid_method
 from sqlalchemy import DateTime, Date, Time
 
 from utilities.list_and_dict import filter_dict_by_list
-
+from utilities.db_exception import DbException
 
 logger = logging.getLogger(__name__)
+
+
+class DbViewException(DbException):
+    """Exceptions encountered while managing DB views."""
 
 
 class DBObject():
@@ -141,8 +145,8 @@ class DBObject():
 
     @classmethod
     def __create_view_if_not_exists(cls, session, view_name, query_str):
-        logger.debug("Created join view %s using query %s", view_name, query_str)
-        session.execute('CREATE VIEW IF NOT EXISTS ' + view_name + ' AS ' + query_str)
+        result = session.execute('CREATE VIEW IF NOT EXISTS ' + view_name + ' AS ' + query_str)
+        logger.debug("Created join view %s using query %s: %r", view_name, query_str, result)
 
     @classmethod
     def create_view_if_doesnt_exist(cls, db, view_name, query_str):
@@ -152,14 +156,17 @@ class DBObject():
 
     @classmethod
     def create_join_view(cls, db, view_name, selectable, join_table, filter_by=None, order_by=None):
-        """Create a database view named view_name if ti doesn't already exist."""
+        """Create a database view named view_name if it doesn't already exist."""
         with db.managed_session() as session:
-            query = Query(selectable, session=session).join(join_table)
-            if filter_by is not None:
-                query = query.filter(filter_by)
-            if order_by is not None:
-                query = query.order_by(order_by)
-            cls.__create_view_if_not_exists(session, view_name, str(query))
+            try:
+                query = Query(selectable, session=session).join(join_table)
+                if filter_by is not None:
+                    query = query.filter(filter_by)
+                if order_by is not None:
+                    query = query.order_by(order_by)
+                cls.__create_view_if_not_exists(session, view_name, str(query))
+            except Exception as e:
+                raise DbViewException(f"Failed to create DB view {view_name} with table {join_table}", e)
 
     @classmethod
     def create_multi_join_view(cls, db, view_name, selectable, joins, order_by=None):
