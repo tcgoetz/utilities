@@ -6,11 +6,15 @@ __license__ = "GPL"
 
 import os
 import logging
+import types
 
 from contextlib import contextmanager
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+
+from utilities.db_attributes import DbAttributesObject
 
 
 logger = logging.getLogger(__name__)
@@ -56,10 +60,10 @@ class DB(object):
         self.engine = create_engine(url_func(self.db_params), echo=(debug_level > 1))
         self.session_maker = sessionmaker(bind=self.engine, expire_on_commit=False)
         self.Base.metadata.create_all(self.engine)
-        self.version = self._DbVersion()
+        self.attributes = self._DbAttributes()
         # now we can do checks
-        self.version.version_check(self, self.db_version)
-        # and last setup table views
+        self.attributes.version_check(self, self.db_version)
+        # and last setup tables
         for table in self.db_tables.values():
             self.init_table(table)
 
@@ -72,8 +76,9 @@ class DB(object):
         """Initialize a table for this database."""
         logger.debug("%s: initializing table %s", self.__class__.__name__, table)
         table.setup(self)
-        self.version.table_version_check(self, table)
-        if not self.version.view_version_check(self, table):
+        self.attributes.table_version_check(self, table)
+        self.attributes.update_table_units(self, table)
+        if not self.attributes.view_version_check(self, table):
             table.delete_view(self)
 
     @classmethod
@@ -112,6 +117,21 @@ class DB(object):
             raise
         finally:
             session.close()
+
+    @classmethod
+    def create(cls, name, version, doc=None):
+        """Create a dynamic database class."""
+        def class_exec(namespace):
+            namespace['db_name'] = name
+            if doc:
+                namespace['__doc__'] = doc
+            namespace['db_version'] = int(version)
+            namespace['db_tables'] = {}
+            base = declarative_base()
+            namespace['Base'] = base
+            namespace['_DbAttributes'] = types.new_class('_DbAttributes', bases=(base, DbAttributesObject))
+        logger.debug("Creating DB class %s version %d", name, version)
+        return types.new_class(name + "Db", bases=(DB,), exec_body=class_exec)
 
     @classmethod
     def delete_db(cls, db_params):

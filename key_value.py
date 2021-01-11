@@ -12,7 +12,7 @@ from sqlalchemy import Column, String, DateTime
 from utilities import db_object
 
 
-class KeyValueObject(db_object.DBObject):
+class KeyValueObject(db_object.DbObject):
     """Base class for implementing key-value databse objects."""
 
     logger = logging.getLogger(__name__)

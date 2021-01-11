@@ -4,6 +4,7 @@ __author__ = "Tom Goetz"
 __copyright__ = "Copyright Tom Goetz"
 __license__ = "GPL"
 
+import types
 import logging
 import datetime
 
@@ -12,7 +13,7 @@ from sqlalchemy.orm import synonym, Query
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm.attributes import set_attribute
 from sqlalchemy.ext.hybrid import hybrid_method
-from sqlalchemy import DateTime, Date, Time
+from sqlalchemy import DateTime, Date, Time, PrimaryKeyConstraint, Column
 
 from utilities.list_and_dict import filter_dict_by_list
 from utilities.db_exception import DbException
@@ -24,12 +25,11 @@ class DbViewException(DbException):
     """Exceptions encountered while managing DB views."""
 
 
-class DBObject():
+class DbObject():
     """Base class for implementing database table objects."""
 
     db = None
     db_views = []
-    time_col_name = None
 
     @classmethod
     def __init_subclass__(cls, **kwargs):
@@ -38,9 +38,33 @@ class DBObject():
             cls.db.add_table(cls)
 
     @classmethod
+    def create(cls, name, db_class, version, pk=None, cols={}, base=None, doc=None, create_view=None, vars={}):
+        """Create a table in a dynamic database class."""
+        def class_exec(namespace):
+            if doc:
+                namespace['__doc__'] = doc
+            namespace['__tablename__'] = name
+            namespace['db'] = db_class
+            namespace['table_version'] = int(version)
+            if pk:
+                namespace['__table_args__'] = (PrimaryKeyConstraint(*pk),)
+            namespace['_col_units'] = {}
+            for colname, colargs in cols.items():
+                namespace[colname] = Column(*colargs.get('args', []), **colargs.get('kwargs', {}))
+                if 'units' in colargs:
+                    namespace['_col_units'][colname] = colargs['units']
+            if create_view:
+                namespace['create_view'] = create_view
+            namespace.update(vars)
+        if not base:
+            base = DbObject
+        logger.info("Creating table class %s base %r version %d cols %r in db %s", name, base, version, cols, db_class)
+        return types.new_class(name, bases=(db_class.Base, base), exec_body=class_exec)
+
+    @classmethod
     def setup(cls, db):
         """Initialize per table data."""
-        if cls.time_col_name is None:
+        if not hasattr(cls, 'time_col_name'):
             cls.__setup_table_vars()
         if hasattr(cls, 'create_view'):
             cls.create_view(db)
@@ -49,6 +73,7 @@ class DBObject():
     def __setup_table_vars(cls):
         cls.col_names = [col.name for col in cls.__table__.columns]
         cls.primary_key_cols = {}
+        cls.time_col_name = None
         for col in cls.__table__._columns:
             if col.primary_key:
                 logger.debug("Found primary key column %s for table %s", col.name, cls.__name__)
@@ -747,7 +772,7 @@ class DBObject():
         return cls.get_monthly_stats(session, first_day_ts, first_day_ts + datetime.timedelta(365))
 
     def __repr__(self):
-        """Return a string representation of a DBObject instance."""
+        """Return a string representation of a DbObject instance."""
         classname = self.__class__.__name__
         values = {col_name : getattr(self, col_name) for col_name in self.col_names}
         return ("<%s() %r>" % (classname, values))

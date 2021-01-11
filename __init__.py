@@ -9,12 +9,11 @@ __license__ = "GPL"
 import version
 import utilities.list_and_dict as list_and_dict
 from utilities.db import DbParams, DB
-from utilities.dynamic_db import DynamicDb
 from utilities.plugin import PluginManager
 from utilities.db_exception import DbException
-from utilities.db_object import DBObject
+from utilities.db_object import DbObject
 from utilities.key_value import KeyValueObject
-from utilities.db_version import DbVersionObject
+from utilities.db_attributes import DbAttributesObject
 from utilities.key_value import KeyValueObject
 from utilities.csv_importer import CsvImporter
 from utilities.location import Location
