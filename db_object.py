@@ -72,12 +72,12 @@ class DbObject():
     @classmethod
     def __setup_table_vars(cls):
         cls.col_names = [col.name for col in cls.__table__.columns]
-        cls.primary_key_cols = {}
+        cls.primary_key_cols = []
         cls.time_col_name = None
         for col in cls.__table__._columns:
             if col.primary_key:
                 logger.debug("Found primary key column %s for table %s", col.name, cls.__name__)
-                cls.primary_key_cols[col.name] = synonym(col)
+                cls.primary_key_cols.append(col.name)
                 cls.get_col_name = col.name
                 if isinstance(col.type, DateTime) or isinstance(col.type, Date) or isinstance(col.type, Time):
                     logger.debug("Found primary key time_col_name %s for table %s", col.name, cls.__name__)
@@ -90,6 +90,12 @@ class DbObject():
                     break
         if cls.time_col_name is not None:
             cls.time_col = synonym(cls.time_col_name)
+
+    @classmethod
+    def _col_from_name(cls, name):
+        for col in cls.__table__.columns:
+            if col.name == name:
+                return col
 
     @classmethod
     def round_ext_col(cls, table, col_name, alt_col_name=None, places=1):
@@ -219,9 +225,21 @@ class DbObject():
     def s_exists(cls, session, values_dict):
         """Return if a matching record exists in the database."""
         query = session.query(cls)
-        for col_name, col in cls.primary_key_cols.items():
-            query = query.filter(col == values_dict[col_name])
+        for pk_col_name in cls.primary_key_cols:
+            query = query.filter(cls._col_from_name(pk_col_name) == values_dict[pk_col_name])
         return session.query(query.exists()).scalar()
+
+    @classmethod
+    def exists(cls, db, values_dict):
+        """Return if a matching record exists in the database."""
+        with db.managed_session() as session:
+            return cls.s_exists(session, values_dict)
+
+    @classmethod
+    def add(cls, db, values_dict):
+        """Add values to the table."""
+        with db.managed_session() as session:
+            return session.add(cls(**values_dict))
 
     @classmethod
     def s_get(cls, session, instance_id, default=None):

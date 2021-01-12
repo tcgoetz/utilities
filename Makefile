@@ -5,6 +5,7 @@ include defines.mk
 all: deps
 
 test:
+	$(MAKE) -C test
 
 verify_commit: test
 
