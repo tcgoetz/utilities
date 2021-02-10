@@ -38,7 +38,7 @@ class DbObject():
             cls.db.add_table(cls)
 
     @classmethod
-    def create(cls, name, db_class, version, pk=None, cols={}, base=None, doc=None, create_view=None, vars={}):
+    def create(cls, name, db_class, version, pk=None, cols={}, base=None, doc=None, create_view=None, inherited_create_view=None, view_version=None, vars={}):
         """Create a table in a dynamic database class."""
         def class_exec(namespace):
             if doc:
@@ -46,6 +46,8 @@ class DbObject():
             namespace['__tablename__'] = name
             namespace['db'] = db_class
             namespace['table_version'] = int(version)
+            if view_version:
+                namespace['view_version'] = int(view_version)
             if pk:
                 namespace['__table_args__'] = (PrimaryKeyConstraint(*pk),)
             namespace['_col_units'] = {}
