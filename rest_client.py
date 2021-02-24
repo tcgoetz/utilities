@@ -69,7 +69,8 @@ class RestClient(object):
 
     default_headers = {
         'User-Agent'    : agent,
-        'Accept'        : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        'Accept'        : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'nk'            : 'NT' # Avoids 402 error in some requests
     }
 
     def __init__(self, session, host, base_route, protocol=RestProtocol.https, port=443):
