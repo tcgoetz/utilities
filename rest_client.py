@@ -72,19 +72,24 @@ class RestClient(object):
         'Accept'        : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
     }
 
-    def __init__(self, session, host, base_route, protocol=RestProtocol.https, port=443):
+    def __init__(self, session, host, base_route, protocol=RestProtocol.https, port=443, headers=None, aditional_headers={}):
         """Return a new RestClient instance given a requests session and the base URL of the API."""
         self.session = session
         self.host = host
         self.protocol = protocol
         self.port = port
         self.base_route = base_route
+        if headers:
+            self.headers = headers
+        else:
+            self.headers = self.default_headers.copy()
+        self.headers.update(aditional_headers)
 
     @classmethod
     def inherit(cls, rest_client, route):
         """Create a new RestClient object from a RestClient object. The new object will handle an API endpoint that is a child of the old RestClient."""
         return RestClient(rest_client.session, rest_client.host, f'{rest_client.base_route}/{route}',
-                          protocol=rest_client.protocol, port=rest_client.port)
+                          protocol=rest_client.protocol, port=rest_client.port, headers=rest_client.headers)
 
     def url(self, leaf_route=None):
         """Return the url for the REST endpoint including leaf if supplied."""
@@ -98,7 +103,7 @@ class RestClient(object):
 
     def get(self, leaf_route, aditional_headers={}, params={}, ignore_errors=[]):
         """Make a REST API call using the GET method."""
-        total_headers = self.default_headers.copy()
+        total_headers = self.headers.copy()
         total_headers.update(aditional_headers)
         try:
             response = self.session.get(self.url(leaf_route), headers=total_headers, params=params)
@@ -110,7 +115,7 @@ class RestClient(object):
 
     def post(self, leaf_route, aditional_headers, params, data):
         """Make a REST API call using the POST method."""
-        total_headers = self.default_headers.copy()
+        total_headers = self.headers.copy()
         total_headers.update(aditional_headers)
         try:
             response = self.session.post(self.url(leaf_route), headers=total_headers, params=params, data=data)
