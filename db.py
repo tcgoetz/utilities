@@ -8,8 +8,6 @@ import os
 import logging
 import types
 
-from contextlib import contextmanager
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
@@ -58,7 +56,7 @@ class DB(object):
         self.db_params = db_params
         url_func = getattr(self, f'_{db_params.db_type}_url')
         self.engine = create_engine(url_func(self.db_params), echo=(debug_level > 1))
-        self.session_maker = sessionmaker(bind=self.engine, expire_on_commit=False)
+        # self.session_maker = sessionmaker(bind=self.engine, expire_on_commit=False)
         self.Base.metadata.create_all(self.engine)
         self.attributes = self._DbAttributes()
         # now we can do checks
@@ -101,22 +99,9 @@ class DB(object):
     def _mysql_url(cls, db_params):
         return f'mysql+pymysql://{db_params.db_username}:{db_params.db_password}@{db_params.db_host}/{cls.db_name}'
 
-    def session(self):
-        """Return a database session."""
-        return self.session_maker()
-
-    @contextmanager
     def managed_session(self):
         """Return a session with automatic commit, rollback, and cleanup."""
-        session = self.session()
-        try:
-            yield session
-            session.commit()
-        except Exception:
-            session.rollback()
-            raise
-        finally:
-            session.close()
+        return sessionmaker(self.engine, expire_on_commit=False).begin()
 
     @classmethod
     def create(cls, name, version, doc=None):

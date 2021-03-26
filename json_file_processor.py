@@ -94,10 +94,6 @@ class JsonFileProcessor(object):
         """Implement this function in a subclass to handle saving a JSON blob to a DB."""
         return 0
 
-    def _commit(self):
-        """Implement this function in a subclass to handle DB commits per file processed."""
-        pass
-
     def _call_process_func(self, name, sub_name, id, json_data):
         """Call a JSON data processor function given it's base name."""
         process_function = '_process_' + name
@@ -123,7 +119,6 @@ class JsonFileProcessor(object):
                     self.logger.warning("No data saved for %s", file_name)
             except Exception:
                 self.logger.error("Failed to parse %s: %s", file_name, traceback.format_exc())
-            self._commit()
         self.logger.info("DB updated with %d entries from %d files.", self.total_updates, self.file_count())
 
     def process(self):
