@@ -18,4 +18,5 @@ module_name = 'utilities'
 module_version = get_version(module_name + os.sep + 'version_info.py')
 
 setup(name=module_name, version=module_version, author='Tom Goetz', packages=[module_name], license=open('LICENSE').read(),
-      description='Utility library for writing database and internet apps.', python_requires=">=3.0")
+      description='Utility library for writing database and internet apps.',
+      url="https://github.com/tcgoetz/Fit", python_requires=">=3.0")
