@@ -15,8 +15,8 @@ from sqlalchemy.orm.attributes import set_attribute
 from sqlalchemy.ext.hybrid import hybrid_method
 from sqlalchemy import DateTime, Date, Time, PrimaryKeyConstraint, Column
 
-from utilities.list_and_dict import filter_dict_by_list
-from utilities.db_exception import DbException
+from idbutils.list_and_dict import filter_dict_by_list
+from idbutils.db_exception import DbException
 
 logger = logging.getLogger(__name__)
 

@@ -9,7 +9,7 @@ import datetime
 import logging
 from sqlalchemy import Column, String, DateTime
 
-from utilities import db_object
+from idbutils import db_object
 
 
 class KeyValueObject(db_object.DbObject):

@@ -10,7 +10,7 @@ import logging
 import tempfile
 from sqlalchemy import Integer, String
 
-import utilities
+import idbutils
 
 root_logger = logging.getLogger()
 root_logger.addHandler(logging.FileHandler('db_object.log', 'w'))
@@ -24,17 +24,17 @@ class TestActivitiesDb(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         temp_dir = tempfile.mkdtemp()
-        cls.test_db_params = utilities.DbParams(**{'db_type' : 'sqlite', 'db_path': temp_dir})
+        cls.test_db_params = idbutils.DbParams(**{'db_type' : 'sqlite', 'db_path': temp_dir})
         logger.info("test_db_params %r", cls.test_db_params)
-        cls.TestDB = utilities.DB.create('test', 1)
+        cls.TestDB = idbutils.DB.create('test', 1)
         _cols = {
             'activity_id': {'args': [String], 'kwargs': {'primary_key': True}},
             'record': {'args': [Integer]}
         }
         # _single_pk = ("activity_id")
-        cls.table_single_pk = utilities.DbObject.create("test_1k", cls.TestDB, 1, cols=_cols)
+        cls.table_single_pk = idbutils.DbObject.create("test_1k", cls.TestDB, 1, cols=_cols)
         _double_pk = ("activity_id", "record")
-        cls.table_double_pk = utilities.DbObject.create("test_2pk", cls.TestDB, 1, _double_pk, _cols)
+        cls.table_double_pk = idbutils.DbObject.create("test_2pk", cls.TestDB, 1, _double_pk, _cols)
         cls.test_db = cls.TestDB(cls.test_db_params)
 
     def test_exists_not_present(self):

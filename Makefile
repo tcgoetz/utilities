@@ -1,14 +1,26 @@
 
 include defines.mk
 
+MODULE=idbutils
 
 all: deps
 
-install:
-	$(PYTHON) setup.py install
+publish_check: dist
+	$(PYTHON) -m twine check dist/*
+
+publish: publish_check
+	$(PYTHON) -m twine upload dist/* --verbose
+
+dist: build
+
+build:
+	$(PYTHON) -m build
+
+install: build
+	$(PIP) install --upgrade --force-reinstall ./dist/$(MODULE)-*.whl 
 
 uninstall:
-	$(PIP) uninstall -y utilities
+	$(PIP) uninstall -y $(MODULE)
 
 test:
 	$(MAKE) -C test
@@ -16,7 +28,7 @@ test:
 verify_commit: test
 
 flake8:
-	$(PYTHON) -m flake8 utilities/*.py --max-line-length=180 --ignore=E203,E221,E241,W503
+	$(PYTHON) -m flake8 $(MODULE)/*.py --max-line-length=180 --ignore=E203,E221,E241,W503
 
 deps:
 	$(PIP) install --upgrade --requirement requirements.txt
@@ -36,6 +48,6 @@ clean: test_clean
 	rm -rf __pycache__
 	rm -rf build
 	rm -rf dist
-	rm -rf utilities.egg-info
+	rm -rf *.egg-info
 
 .PHONY: all deps remove_deps clean test

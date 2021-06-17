@@ -12,7 +12,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
-from utilities.db_attributes import DbAttributesObject
+from idbutils.db_attributes import DbAttributesObject
 
 
 logger = logging.getLogger(__name__)

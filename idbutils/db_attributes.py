@@ -5,7 +5,7 @@ __copyright__ = "Copyright Tom Goetz"
 __license__ = "GPL"
 
 
-from utilities.key_value import KeyValueObject
+from idbutils.key_value import KeyValueObject
 
 
 class DbAttributesObject(KeyValueObject):

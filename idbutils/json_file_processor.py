@@ -10,8 +10,8 @@ import traceback
 from tqdm import tqdm
 import dateutil.parser
 
-from utilities.file_processor import FileProcessor
-from utilities.conversions import epoch_ms_to_dt
+from idbutils.file_processor import FileProcessor
+from idbutils.conversions import epoch_ms_to_dt
 
 
 class JsonFileProcessor(object):
