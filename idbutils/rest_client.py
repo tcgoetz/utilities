@@ -68,8 +68,8 @@ class RestClient(object):
     agent = agents['Firefox_MacOS']
 
     default_headers = {
-        'User-Agent'    : agent,
-        'Accept'        : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        # 'User-Agent'    : agent,
+        # 'Accept'        : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
     }
 
     def __init__(self, session, host, base_route, protocol=RestProtocol.https, port=443, headers=None, aditional_headers={}):
@@ -105,8 +105,12 @@ class RestClient(object):
         """Make a REST API call using the GET method."""
         total_headers = self.headers.copy()
         total_headers.update(aditional_headers)
+        url = self.url(leaf_route)
         try:
-            response = self.session.get(self.url(leaf_route), headers=total_headers, params=params)
+            response = self.session.get(url, headers=total_headers, params=params)
+        except Exception as e:
+            raise RestCallException(e, leaf_route, None, f'GET {url} failed: {e}')
+        try:
             response.raise_for_status()
             return response
         except Exception as e:
@@ -117,8 +121,12 @@ class RestClient(object):
         """Make a REST API call using the POST method."""
         total_headers = self.headers.copy()
         total_headers.update(aditional_headers)
+        url = self.url(leaf_route)
         try:
             response = self.session.post(self.url(leaf_route), headers=total_headers, params=params, data=data)
+        except Exception as e:
+            raise RestCallException(e, leaf_route, None, f'POST {url} failed: {e}')
+        try:
             response.raise_for_status()
             return response
         except Exception as e:
