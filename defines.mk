@@ -37,5 +37,6 @@ ifeq ($(PIP),)
 $(error pip not found)
 endif
 
+MODULE=idbutils
 
-export PLATFORM PYTHON PIP
+export MODULE PLATFORM PYTHON PIP
