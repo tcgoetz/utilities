@@ -47,9 +47,12 @@ class PluginManager():
     def _load(self, name, plugin_dict):
         if name not in self._plugins_classes:
             self._load_class(name, plugin_dict)
-        if name not in self.plugins:
-            self.plugins[name] = self._plugins_classes[name]()
-            logger.debug("Instantiated plugin %s: %r", name, self.plugins[name])
+        plugin_type = self._plugins_classes[name]._type
+        if plugin_type not in self.plugins:
+            self.plugins[plugin_type] = {}
+        if name not in self.plugins[plugin_type]:
+            self.plugins[plugin_type][name] = self._plugins_classes[name]()
+            logger.debug("Instantiated %s plugin %s: %r", plugin_type, name, self.plugins[plugin_type][name])
 
     def _load_all(self, plugin_dir, plugin_dict):
         logger.debug("Loading plugins from %s ", plugin_dir)
