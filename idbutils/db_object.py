@@ -575,6 +575,13 @@ class DbObject():
             return query.order_by(desc(cls.time_col)).limit(1).scalar()
 
     @classmethod
+    def get_latest(cls, db, count=1):
+        """Return the most recent records."""
+        with db.managed_session() as session:
+            query = session.query(cls)
+            return query.order_by(desc(cls.time_col)).limit(count).all()
+
+    @classmethod
     def get_time_col_latest(cls, db, col):
         """Return the most recent value for the given column with time format."""
         with db.managed_session() as session:
