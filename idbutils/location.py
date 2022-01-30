@@ -22,9 +22,14 @@ class Location(object):
         return cls(lat_obj.to_degrees(), long_obj.to_degrees())
 
     @classmethod
-    def google_maps_url(cls, lat_str, long_str):
+    def google_maps_url_template(cls, lat_str, long_str):
         """Given a latitude and longitude, return a Google Maps URL for that location."""
         return f'"http://maps.google.com/?ie=UTF8&q=" || {lat_str} || "," || {long_str} || "&z=13"'
+
+    @classmethod
+    def google_maps_url(cls, lat_str, long_str):
+        """Given a latitude and longitude, return a Google Maps URL for that location."""
+        return f'http://maps.google.com/?ie=UTF8&q={lat_str},{long_str}&z=13'
 
     def to_google_maps_url(self):
         """Return a Google Maps URL for the location."""
@@ -39,4 +44,4 @@ class Location(object):
         return f'Location({self.lat_deg}, {self.long_deg})'
 
     def __str__(self):
-        return self.__repr__()
+        return f'{self.lat_deg}, {self.long_deg}'
