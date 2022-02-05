@@ -5,7 +5,7 @@ __copyright__ = "Copyright Tom Goetz"
 __license__ = "GPL"
 
 
-class Location(object):
+class Location():
     """Object representing a geographic location."""
 
     def __init__(self, lat_deg=None, long_deg=None, location=None):
@@ -34,6 +34,10 @@ class Location(object):
     def to_google_maps_url(self):
         """Return a Google Maps URL for the location."""
         return self.google_maps_url(self.lat_deg, self.long_deg)
+
+    def display(self):
+        """Return the location as a string formatted for display."""
+        return f'{round(self.lat_deg, 4) if self.lat_deg is not None else "-"}, {round(self.long_deg, 4) if self.long_deg is not None else "-"}'
 
     def __eq__(self, other):
         if not isinstance(other, Location):
