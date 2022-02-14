@@ -15,6 +15,9 @@ class Location():
         elif lat_deg is not None and long_deg is not None:
             self.lat_deg = float(lat_deg)
             self.long_deg = float(long_deg)
+        else:
+            self.lat_deg = None
+            self.long_deg = None
 
     @classmethod
     def from_objs(cls, lat_obj, long_obj):

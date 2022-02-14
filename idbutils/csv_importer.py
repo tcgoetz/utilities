@@ -9,7 +9,7 @@ import datetime
 import csv
 
 
-class CsvImporter(object):
+class CsvImporter():
     """Class for importing data from a CSV file."""
 
     logger = logging.getLogger(__name__)
@@ -97,7 +97,7 @@ class CsvImporter(object):
         }
 
     def process_file(self, english_units):
-        """Import the file ito the database."""
+        """Import the file into the database."""
         self.logger.info("Reading file: " + self.filename)
         with open(self.filename) as csv_file:
             read_csv = csv.DictReader(csv_file, delimiter=self.delimiter)
