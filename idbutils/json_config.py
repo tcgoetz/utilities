@@ -9,7 +9,7 @@ import json
 import dateutil.parser
 
 
-class JsonConfig(object):
+class JsonConfig():
     """Class that loads a JSON config file."""
 
     def __init__(self, filename):

@@ -14,7 +14,7 @@ from idbutils.file_processor import FileProcessor
 from idbutils.conversions import epoch_ms_to_dt
 
 
-class JsonFileProcessor(object):
+class JsonFileProcessor():
     """Class for parsing JSON formatted health data into a database."""
 
     logger = logging.getLogger()

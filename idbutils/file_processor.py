@@ -11,7 +11,7 @@ import re
 import datetime
 
 
-class FileProcessor(object):
+class FileProcessor():
     """Class for finding files that match a regex."""
 
     logger = logging.getLogger(__file__)

@@ -18,7 +18,7 @@ from idbutils.db_attributes import DbAttributesObject
 logger = logging.getLogger(__name__)
 
 
-class DbParams(object):
+class DbParams():
     """Holds parameters for attaching to a database."""
 
     def __init__(self, **kwargs):
@@ -35,7 +35,7 @@ class DbParams(object):
         return self.__repr__()
 
 
-class DB(object):
+class DB():
     """Object representing a database."""
 
     def __init__(self, db_params, debug_level=0):

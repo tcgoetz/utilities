@@ -56,7 +56,7 @@ class RestProtocol(enum.Enum):
     https   = 'https'
 
 
-class RestClient(object):
+class RestClient():
     """Class that encapsilates REST functionality for a single API endpoint."""
 
     logger = logging.getLogger(__file__)
