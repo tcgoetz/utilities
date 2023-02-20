@@ -8,7 +8,7 @@ import types
 import logging
 import datetime
 
-from sqlalchemy import func, desc, extract, and_, literal_column
+from sqlalchemy import func, desc, extract, and_, literal_column, text
 from sqlalchemy.orm import synonym, Query
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm.attributes import set_attribute
@@ -166,7 +166,7 @@ class DbObject():
     def __delete_view(cls, db, view_name):
         """Delete a database view with name view_name."""
         with db.managed_session() as session:
-            session.execute('DROP VIEW IF EXISTS ' + view_name)
+            session.execute(text('DROP VIEW IF EXISTS ' + view_name))
 
     @classmethod
     def delete_view(cls, db, view_name=None):
@@ -178,7 +178,7 @@ class DbObject():
 
     @classmethod
     def __create_view_if_not_exists(cls, session, view_name, query_str):
-        result = session.execute('CREATE VIEW IF NOT EXISTS ' + view_name + ' AS ' + query_str)
+        result = session.execute(text('CREATE VIEW IF NOT EXISTS ' + view_name + ' AS ' + query_str))
         logger.debug("Created join view %s using query %s: %r", view_name, query_str, result)
 
     @classmethod
