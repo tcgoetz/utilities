@@ -246,10 +246,7 @@ class DbObject():
     @classmethod
     def s_get(cls, session, instance_id, default=None):
         """Return a single instance for the given id."""
-        instance = session.query(cls).get(instance_id)
-        if instance is None:
-            return default
-        return instance
+        return session.get(cls, instance_id) or default
 
     @classmethod
     def get(cls, db, instance_id, default=None):
@@ -399,9 +396,7 @@ class DbObject():
     @classmethod
     def s_get_for_period_where(cls, session, start_ts, end_ts, selectable=None, where=None):
         """Return all DB records matching the selection criteria."""
-        if selectable is None:
-            selectable = cls
-        query = cls._s_query(session, selectable, cls.time_col, start_ts, end_ts)
+        query = cls._s_query(session, selectable or cls, cls.time_col, start_ts, end_ts)
         if where is not None:
             query = query.filter(where)
         return query.all()
@@ -415,9 +410,7 @@ class DbObject():
     @classmethod
     def s_get_for_period(cls, session, start_ts, end_ts, selectable=None, not_none_col=None):
         """Return all DB records matching the selection criteria."""
-        if selectable is None:
-            selectable = cls
-        query = cls._s_query(session, selectable, cls.time_col, start_ts, end_ts)
+        query = cls._s_query(session, selectable or cls, cls.time_col, start_ts, end_ts)
         if not_none_col is not None:
             # filter does not use 'is not None'
             query = query.filter(not_none_col != None)  # noqa
