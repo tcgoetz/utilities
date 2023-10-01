@@ -88,7 +88,7 @@ class RestClient():
     @classmethod
     def inherit(cls, rest_client, route):
         """Create a new RestClient object from a RestClient object. The new object will handle an API endpoint that is a child of the old RestClient."""
-        if self.base_route == '':
+        if rest_client.base_route == '':
             base_route = route
         else:
             base_route = f'{rest_client.base_route}/{route}'
