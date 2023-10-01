@@ -88,15 +88,23 @@ class RestClient():
     @classmethod
     def inherit(cls, rest_client, route):
         """Create a new RestClient object from a RestClient object. The new object will handle an API endpoint that is a child of the old RestClient."""
-        return RestClient(rest_client.session, rest_client.host, f'{rest_client.base_route}/{route}',
+        if self.base_route == '':
+            base_route = route
+        else:
+            base_route = f'{rest_client.base_route}/{route}'
+
+        return RestClient(rest_client.session, rest_client.host, base_route,
                           protocol=rest_client.protocol, port=rest_client.port, headers=rest_client.headers)
 
     def url(self, leaf_route=None):
         """Return the url for the REST endpoint including leaf if supplied."""
-        if leaf_route is not None:
+        if self.base_route == '':
+            path = leaf_route or ''
+        elif leaf_route is not None:
             path = '%s/%s' % (self.base_route, leaf_route)
         else:
             path = self.base_route
+
         if (self.protocol == RestProtocol.https and self.port == 443) or (self.protocol == RestProtocol.http and self.port == 80):
             return f'{self.protocol.name}://{self.host}/{path}'
         return f'{self.protocol.name}://{self.host}:{self.port}/{path}'
