@@ -36,9 +36,9 @@ clean:
 #
 $(TEST_GROUPS):
 	echo ${PYTHONPATH}
-	$(PYTHON) test_$@.py
+	$(PYTHON_PATH) test_$@.py
 
 test_%:
-	$(PYTHON) -m unittest -v $@
+	$(PYTHON_PATH) -m unittest -v $@
 
 .PHONY: all db db_objects clean
