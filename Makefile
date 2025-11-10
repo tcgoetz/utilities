@@ -59,6 +59,7 @@ test_clean:
 	$(MAKE) -C test clean
 
 clean: test_clean
+	echo "Cleaning utilities"
 	rm -f *.pyc
 	rm -rf __pycache__
 	rm -rf build
