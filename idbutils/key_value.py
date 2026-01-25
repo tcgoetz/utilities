@@ -13,7 +13,7 @@ from idbutils import db_object
 
 
 class KeyValueObject(db_object.DbObject):
-    """Base class for implementing key-value databse objects."""
+    """Base class for implementing key-value database objects."""
 
     logger = logging.getLogger(__name__)
 

@@ -9,7 +9,7 @@ from idbutils.key_value import KeyValueObject
 
 
 class DbAttributesObject(KeyValueObject):
-    """Class for managing databse attributes including versioning."""
+    """Class for managing database attributes including versioning."""
 
     __tablename__ = '_attributes'
     __db_version_key = 'db.version'
@@ -20,7 +20,7 @@ class DbAttributesObject(KeyValueObject):
         return cls.get_int(db, version_key)
 
     def version_check(self, db, version_number):
-        """Check if the databse version in the database is the same as in the code."""
+        """Check if the database version in the database is the same as in the code."""
         self.version = self.__version_check_key(db, self.__db_version_key, version_number)
         if self.version != version_number:
             raise RuntimeError("DB: %s version mismatch. The DB schema has been updated. Please rebuild the %s DB. (%s vs %s)" %

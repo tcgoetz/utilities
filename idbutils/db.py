@@ -40,7 +40,7 @@ class DB():
 
     def __init__(self, db_params, debug_level=0):
         """
-        Return an instance a databse access class.
+        Return an instance a database access class.
 
         Parameters:
         ----------

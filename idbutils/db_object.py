@@ -122,33 +122,33 @@ class DbObject():
 
     @hybrid_method
     def during(self, start_ts, end_ts):
-        """Return True if the databse object's timestamp is between the given times."""
+        """Return True if the database object's timestamp is between the given times."""
         return self.time_col >= start_ts and self.time_col < end_ts
 
     @during.expression
     def during(cls, start_ts, end_ts):
-        """Return True if the databse object's timestamp is between the given times."""
+        """Return True if the database object's timestamp is between the given times."""
         return and_(cls.time_col >= start_ts, cls.time_col < end_ts)
 
     @hybrid_method
     def after(self, start_ts):
-        """Return True if the databse object's timestamp is after the given time."""
+        """Return True if the database object's timestamp is after the given time."""
         if start_ts is not None:
             return self.time_col >= start_ts
 
     @after.expression
     def after(cls, start_ts):
-        """Return True if the databse object's timestamp is after the given time."""
+        """Return True if the database object's timestamp is after the given time."""
         return cls.time_col >= start_ts
 
     @hybrid_method
     def before(self, end_ts):
-        """Return True if the databse object's timestamp is before the given time."""
+        """Return True if the database object's timestamp is before the given time."""
         return self.time_col < end_ts
 
     @before.expression
     def before(cls, end_ts):
-        """Return True if the databse object's timestamp is before the given time."""
+        """Return True if the database object's timestamp is before the given time."""
         return cls.time_col < end_ts
 
     @classmethod
@@ -788,7 +788,7 @@ class DbObject():
     @classmethod
     def get_yearly_stats(cls, session, year):
         """Return a dictionary of aggregate statistics for the given year."""
-        first_day_ts = datetime.datetime(year, 1, 1)
+        first_day_ts = datetime.datetime(year=year, month=1, day=1)
         return cls.get_monthly_stats(session, first_day_ts, first_day_ts + datetime.timedelta(365))
 
     def __repr__(self):
