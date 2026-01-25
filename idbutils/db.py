@@ -92,6 +92,7 @@ class DB():
         filename = cls._sqlite_path(db_params)
         try:
             os.remove(filename)
+            logger.info('%s removed', filename)
         except Exception:
             logger.warning('%s not removed', filename)
 
@@ -121,7 +122,9 @@ class DB():
     @classmethod
     def delete_db(cls, db_params):
         """Delete a database."""
-        delete_func = getattr(cls, f'_{db_params.db_type}_delete')
+        delete_func_str = f'_{db_params.db_type}_delete'
+        logger.info('Deleting db with %s', delete_func_str)
+        delete_func = getattr(cls, delete_func_str)
         delete_func(db_params)
 
     def __repr__(self):
