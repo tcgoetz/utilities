@@ -27,7 +27,10 @@ class Location():
     @classmethod
     def google_maps_url_template(cls, lat_str, long_str):
         """Given a latitude and longitude, return a Google Maps URL for that location."""
-        return f'"http://maps.google.com/?ie=UTF8&q=" || {lat_str} || "," || {long_str} || "&z=13"'
+        # Use single quotes for SQL string literals (portable across sqlite,
+        # mysql and postgres). Postgres treats "..." as a quoted identifier
+        # and rejects this expression when written with double quotes.
+        return f"'http://maps.google.com/?ie=UTF8&q=' || {lat_str} || ',' || {long_str} || '&z=13'"
 
     @classmethod
     def google_maps_url(cls, lat_str, long_str):

@@ -8,7 +8,7 @@ import os
 import logging
 import types
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -55,7 +55,22 @@ class DB():
             logger.setLevel(logging.INFO)
         self.db_params = db_params
         url_func = getattr(self, f'_{db_params.db_type}_url')
-        self.engine = create_engine(url_func(self.db_params), echo=(debug_level > 1))
+        if db_params.db_type == 'postgresql':
+            # Each idbutils.DB instance maps to its own PostgreSQL schema inside a
+            # single shared database. db_name (e.g. 'garmin', 'garmin_activities')
+            # selects the schema; ORM tables are declared without an explicit
+            # schema, so we bind search_path on the engine and create the schema
+            # first if it doesn't exist.
+            schema = self.db_name
+            self.engine = create_engine(
+                url_func(self.db_params),
+                echo=(debug_level > 1),
+                connect_args={'options': f'-csearch_path={schema}'},
+            )
+            with self.engine.begin() as conn:
+                conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
+        else:
+            self.engine = create_engine(url_func(self.db_params), echo=(debug_level > 1))
         # self.session_maker = sessionmaker(bind=self.engine, expire_on_commit=False)
         self.Base.metadata.create_all(self.engine)
         self.attributes = self._DbAttributes()
@@ -99,6 +114,26 @@ class DB():
     @classmethod
     def _mysql_url(cls, db_params):
         return f'mysql+pymysql://{db_params.db_username}:{db_params.db_password}@{db_params.db_host}/{cls.db_name}'
+
+    @classmethod
+    def _postgresql_url(cls, db_params):
+        port = getattr(db_params, 'db_port', None) or 5432
+        return (
+            f'postgresql+psycopg2://{db_params.db_username}:{db_params.db_password}'
+            f'@{db_params.db_host}:{port}/{db_params.pg_database}'
+        )
+
+    @classmethod
+    def _postgresql_delete(cls, db_params):
+        engine = create_engine(cls._postgresql_url(db_params))
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(f'DROP SCHEMA IF EXISTS "{cls.db_name}" CASCADE'))
+            logger.info('postgres schema %s dropped', cls.db_name)
+        except Exception as e:
+            logger.warning('postgres schema %s not dropped: %s', cls.db_name, e)
+        finally:
+            engine.dispose()
 
     def managed_session(self):
         """Return a session with automatic commit, rollback, and cleanup."""

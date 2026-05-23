@@ -102,7 +102,10 @@ class DbObject():
     @classmethod
     def round_ext_col(cls, table, col_name, alt_col_name=None, places=1):
         """Return a SQL phrase for rounding and optionally aliasing a column from another table."""
-        return literal_column(f'ROUND({table.__tablename__ + "." + col_name}, {places}) AS {alt_col_name if alt_col_name else col_name} ')
+        # CAST AS NUMERIC is required so PostgreSQL picks round(numeric, int);
+        # round(double precision, int) does not exist there. SQLite and MySQL
+        # both accept CAST AS NUMERIC, so this is portable.
+        return literal_column(f'ROUND(CAST({table.__tablename__ + "." + col_name} AS NUMERIC), {places}) AS {alt_col_name if alt_col_name else col_name} ')
 
     @classmethod
     def round_col(cls, col_name, alt_col_name=None, places=1):
@@ -112,7 +115,7 @@ class DbObject():
     @classmethod
     def round_col_txt(cls, col_name, alt_col_name=None, places=1):
         """Return a SQL phrase for rounding and optionally aliasing a column."""
-        return literal_column(f'ROUND({col_name}, {places}) AS {alt_col_name if alt_col_name else col_name} ')
+        return literal_column(f'ROUND(CAST({col_name} AS NUMERIC), {places}) AS {alt_col_name if alt_col_name else col_name} ')
 
     @declared_attr
     def col_count(cls):
@@ -178,7 +181,16 @@ class DbObject():
 
     @classmethod
     def __create_view_if_not_exists(cls, session, view_name, query_str):
-        result = session.execute(text('CREATE VIEW IF NOT EXISTS ' + view_name + ' AS ' + query_str))
+        # `CREATE VIEW IF NOT EXISTS` is sqlite syntax. Postgres and MySQL
+        # support `CREATE OR REPLACE VIEW`, which is also a safe no-op when
+        # the view's definition hasn't changed but lets us absorb selectable
+        # tweaks across versions without an explicit drop.
+        dialect = session.bind.dialect.name if session.bind is not None else 'sqlite'
+        if dialect == 'sqlite':
+            stmt = f'CREATE VIEW IF NOT EXISTS {view_name} AS {query_str}'
+        else:
+            stmt = f'CREATE OR REPLACE VIEW {view_name} AS {query_str}'
+        result = session.execute(text(stmt))
         logger.debug("Created join view %s using query %s: %r", view_name, query_str, result)
 
     @classmethod
