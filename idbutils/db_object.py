@@ -13,12 +13,106 @@ from sqlalchemy.orm import synonym, Query
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm.attributes import set_attribute
 from sqlalchemy.ext.hybrid import hybrid_method
-from sqlalchemy import DateTime, Date, Time, PrimaryKeyConstraint, Column
+from sqlalchemy import DateTime, Date, Time, PrimaryKeyConstraint, Column, Integer
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.expression import FunctionElement
 
 from idbutils.list_and_dict import filter_dict_by_list
 from idbutils.db_exception import DbException
 
 logger = logging.getLogger(__name__)
+
+
+class _day_of_year(FunctionElement):
+    """Day-of-year (1-366) from a date/datetime column, portable across backends."""
+
+    type = Integer()
+    name = 'day_of_year'
+    inherit_cache = True
+
+
+@compiles(_day_of_year, 'sqlite')
+def _day_of_year_sqlite(element, compiler, **kw):
+    return f"strftime('%j', {compiler.process(element.clauses, **kw)})"
+
+
+@compiles(_day_of_year, 'postgresql')
+def _day_of_year_postgresql(element, compiler, **kw):
+    return f"EXTRACT(DOY FROM {compiler.process(element.clauses, **kw)})"
+
+
+@compiles(_day_of_year, 'mysql')
+def _day_of_year_mysql(element, compiler, **kw):
+    return f"DAYOFYEAR({compiler.process(element.clauses, **kw)})"
+
+
+@compiles(_day_of_year)
+def _day_of_year_default(element, compiler, **kw):
+    # Fallback: sqlite-style. Lets the original behaviour stand for any new backend.
+    return f"strftime('%j', {compiler.process(element.clauses, **kw)})"
+
+
+class _seconds_since_midnight(FunctionElement):
+    """Seconds since midnight from a Time column, portable across backends."""
+
+    type = Integer()
+    name = 'seconds_since_midnight'
+    inherit_cache = True
+
+
+@compiles(_seconds_since_midnight, 'sqlite')
+def _seconds_since_midnight_sqlite(element, compiler, **kw):
+    inner = compiler.process(element.clauses, **kw)
+    return f"strftime('%s', {inner}) - strftime('%s', '00:00')"
+
+
+@compiles(_seconds_since_midnight, 'postgresql')
+def _seconds_since_midnight_postgresql(element, compiler, **kw):
+    return f"EXTRACT(EPOCH FROM {compiler.process(element.clauses, **kw)})"
+
+
+@compiles(_seconds_since_midnight, 'mysql')
+def _seconds_since_midnight_mysql(element, compiler, **kw):
+    return f"TIME_TO_SEC({compiler.process(element.clauses, **kw)})"
+
+
+@compiles(_seconds_since_midnight)
+def _seconds_since_midnight_default(element, compiler, **kw):
+    inner = compiler.process(element.clauses, **kw)
+    return f"strftime('%s', {inner}) - strftime('%s', '00:00')"
+
+
+class _time_from_seconds(FunctionElement):
+    """Convert a numeric "seconds since midnight" expression into a Time value, portable across backends."""
+
+    type = Time()
+    name = 'time_from_seconds'
+    inherit_cache = True
+
+
+@compiles(_time_from_seconds, 'sqlite')
+def _time_from_seconds_sqlite(element, compiler, **kw):
+    return f"time({compiler.process(element.clauses, **kw)}, 'unixepoch')"
+
+
+@compiles(_time_from_seconds, 'postgresql')
+def _time_from_seconds_postgresql(element, compiler, **kw):
+    inner = compiler.process(element.clauses, **kw)
+    # `make_interval(secs := <int>)` then cast to time. Wrap modulo 86400 to
+    # match sqlite's `time(secs, 'unixepoch')` which also wraps within a day.
+    # Use MOD(x, 86400) rather than `x % 86400` because psycopg2's parameter
+    # binder treats a bare `%` as a placeholder marker and rejects mixing.
+    return f"(make_interval(secs => MOD((CAST({inner} AS DOUBLE PRECISION))::int, 86400)))::time"
+
+
+@compiles(_time_from_seconds, 'mysql')
+def _time_from_seconds_mysql(element, compiler, **kw):
+    return f"SEC_TO_TIME({compiler.process(element.clauses, **kw)})"
+
+
+@compiles(_time_from_seconds)
+def _time_from_seconds_default(element, compiler, **kw):
+    return f"time({compiler.process(element.clauses, **kw)}, 'unixepoch')"
 
 
 class DbViewException(DbException):
@@ -102,7 +196,10 @@ class DbObject():
     @classmethod
     def round_ext_col(cls, table, col_name, alt_col_name=None, places=1):
         """Return a SQL phrase for rounding and optionally aliasing a column from another table."""
-        return literal_column(f'ROUND({table.__tablename__ + "." + col_name}, {places}) AS {alt_col_name if alt_col_name else col_name} ')
+        # CAST AS NUMERIC is required so PostgreSQL picks round(numeric, int);
+        # round(double precision, int) does not exist there. SQLite and MySQL
+        # both accept CAST AS NUMERIC, so this is portable.
+        return literal_column(f'ROUND(CAST({table.__tablename__ + "." + col_name} AS NUMERIC), {places}) AS {alt_col_name if alt_col_name else col_name} ')
 
     @classmethod
     def round_col(cls, col_name, alt_col_name=None, places=1):
@@ -112,7 +209,7 @@ class DbObject():
     @classmethod
     def round_col_txt(cls, col_name, alt_col_name=None, places=1):
         """Return a SQL phrase for rounding and optionally aliasing a column."""
-        return literal_column(f'ROUND({col_name}, {places}) AS {alt_col_name if alt_col_name else col_name} ')
+        return literal_column(f'ROUND(CAST({col_name} AS NUMERIC), {places}) AS {alt_col_name if alt_col_name else col_name} ')
 
     @declared_attr
     def col_count(cls):
@@ -178,7 +275,16 @@ class DbObject():
 
     @classmethod
     def __create_view_if_not_exists(cls, session, view_name, query_str):
-        result = session.execute(text('CREATE VIEW IF NOT EXISTS ' + view_name + ' AS ' + query_str))
+        # `CREATE VIEW IF NOT EXISTS` is sqlite syntax. Postgres and MySQL
+        # support `CREATE OR REPLACE VIEW`, which is also a safe no-op when
+        # the view's definition hasn't changed but lets us absorb selectable
+        # tweaks across versions without an explicit drop.
+        dialect = session.bind.dialect.name if session.bind is not None else 'sqlite'
+        if dialect == 'sqlite':
+            stmt = f'CREATE VIEW IF NOT EXISTS {view_name} AS {query_str}'
+        else:
+            stmt = f'CREATE OR REPLACE VIEW {view_name} AS {query_str}'
+        result = session.execute(text(stmt))
         logger.debug("Created join view %s using query %s: %r", view_name, query_str, result)
 
     @classmethod
@@ -308,11 +414,11 @@ class DbObject():
 
     @classmethod
     def _secs_from_time(cls, col):
-        return func.strftime('%s', col) - func.strftime('%s', '00:00')
+        return _seconds_since_midnight(col)
 
     @classmethod
     def _time_from_secs(cls, value):
-        return func.time(value, 'unixepoch')
+        return _time_from_seconds(value)
 
     @classmethod
     def _row_to_int(cls, row):
@@ -364,7 +470,7 @@ class DbObject():
     @classmethod
     def s_get_days(cls, session, year):
         """Return a list of days as indexes, for the given year, present in the table."""
-        return cls._rows_to_ints(session.query(func.strftime("%j", cls.time_col)).filter(extract('year', cls.time_col) == str(year)).distinct().all())
+        return cls._rows_to_ints(session.query(_day_of_year(cls.time_col)).filter(extract('year', cls.time_col) == year).distinct().all())
 
     @classmethod
     def get_days(cls, db, year):
@@ -499,7 +605,17 @@ class DbObject():
     @classmethod
     def _s_get_time_col_func(cls, session, col, stat_func, start_ts=None, end_ts=None):
         result = cls._s_query(session, cls._time_from_secs(stat_func(cls._secs_from_time(col))), None, start_ts, end_ts, cls._secs_from_time(col)).scalar()
-        return datetime.datetime.strptime(result, '%H:%M:%S').time() if result is not None else datetime.time.min
+        if result is None:
+            return datetime.time.min
+        # sqlite's `time(secs, 'unixepoch')` returns a string; postgres'
+        # `(make_interval...)::time` and mysql's SEC_TO_TIME return a real
+        # `datetime.time` via their DB-API typecasters. Handle either form.
+        if isinstance(result, datetime.time):
+            return result
+        if isinstance(result, datetime.timedelta):
+            total = int(result.total_seconds()) % 86400
+            return datetime.time(total // 3600, (total % 3600) // 60, total % 60)
+        return datetime.datetime.strptime(result, '%H:%M:%S').time()
 
     @classmethod
     def _get_time_col_func(cls, db, col, stat_func, start_ts=None, end_ts=None):
@@ -583,7 +699,7 @@ class DbObject():
     @classmethod
     def _s_get_col_func_of_max_per_day_for_value(cls, session, col, stat_func, start_ts, end_ts, match_col=None, match_value=None):
         max_daily_query = (
-            session.query(func.max(col).label('maxes')).filter(cls.during(start_ts, end_ts)).group_by(func.strftime("%j", cls.time_col))
+            session.query(func.max(col).label('maxes')).filter(cls.during(start_ts, end_ts)).group_by(_day_of_year(cls.time_col))
         )
         if match_col is not None and match_value is not None:
             max_daily_query.filter(match_col == match_value)
@@ -645,7 +761,17 @@ class DbObject():
     @classmethod
     def latest_time(cls, db, not_zero_col):
         """Return the time value of the most recent entry in the table."""
-        return cls.get_col_max_greater_than_value(db, cls.time_col, not_zero_col, 0)
+        # Pick the right "zero" sentinel for the filter column. sqlite is
+        # permissive and accepts `time_col > 0`; postgres rejects the
+        # `time without time zone > integer` operator. The columns we filter
+        # on in garmindb are typically `Time` (e.g. Sleep.total_sleep) or
+        # numeric (Weight.weight), so branch on the SQLAlchemy column type.
+        col_type = not_zero_col.property.columns[0].type
+        if isinstance(col_type, (Time, DateTime, Date)):
+            zero = datetime.time.min if isinstance(col_type, Time) else datetime.datetime.min
+        else:
+            zero = 0
+        return cls.get_col_max_greater_than_value(db, cls.time_col, not_zero_col, zero)
 
     @classmethod
     def row_count(cls, db, col=None, col_value=None):
