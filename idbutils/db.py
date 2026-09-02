@@ -71,7 +71,6 @@ class DB():
                 conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
         else:
             self.engine = create_engine(url_func(self.db_params), echo=(debug_level > 1))
-        # self.session_maker = sessionmaker(bind=self.engine, expire_on_commit=False)
         self.Base.metadata.create_all(self.engine)
         self.attributes = self._DbAttributes()
         # now we can do checks
