@@ -125,6 +125,9 @@ class DbObject():
     db = None
     db_views = []
 
+    __time_col_name__ = None
+    __get_col_name__ = None
+
     @classmethod
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -160,32 +163,11 @@ class DbObject():
     @classmethod
     def setup(cls, db):
         """Initialize per table data."""
-        if not hasattr(cls, 'time_col_name'):
-            cls.__setup_table_vars()
+        cls.col_names = [col.name for col in cls.__table__.columns]
+        if cls.__time_col_name__ is not None:
+            cls.time_col = synonym(cls.__time_col_name__)
         if hasattr(cls, 'create_view'):
             cls.create_view(db)
-
-    @classmethod
-    def __setup_table_vars(cls):
-        cls.col_names = [col.name for col in cls.__table__.columns]
-        cls.primary_key_cols = []
-        cls.time_col_name = None
-        for col in cls.__table__._columns:
-            if col.primary_key:
-                logger.debug("Found primary key column %s for table %s", col.name, cls.__name__)
-                cls.primary_key_cols.append(col.name)
-                cls.get_col_name = col.name
-                if isinstance(col.type, DateTime) or isinstance(col.type, Date) or isinstance(col.type, Time):
-                    logger.debug("Found primary key time_col_name %s for table %s", col.name, cls.__name__)
-                    cls.time_col_name = col.name
-        if cls.time_col_name is None:
-            for col in cls.__table__._columns:
-                if isinstance(col.type, DateTime) or isinstance(col.type, Date) or isinstance(col.type, Time):
-                    logger.info("Found time_col_name %s for table %s", col.name, cls.__name__)
-                    cls.time_col_name = col.name
-                    break
-        if cls.time_col_name is not None:
-            cls.time_col = synonym(cls.time_col_name)
 
     @classmethod
     def _col_from_name(cls, name):
@@ -289,7 +271,7 @@ class DbObject():
 
     @classmethod
     def create_view_if_doesnt_exist(cls, db, view_name, query_str):
-        """Create a database view named view_name if ti doesn't already exist."""
+        """Create a database view named view_name if it doesn't already exist."""
         with db.managed_session() as session:
             cls.__create_view_if_not_exists(session, view_name, query_str)
 
@@ -331,15 +313,15 @@ class DbObject():
 
     @classmethod
     def s_exists(cls, session, values_dict):
-        """Return if a matching record exists in the database."""
+        """Return if a matching record based on the unique column __get_col_name__ if it exists in the database."""
         query = session.query(cls)
-        for pk_col_name in cls.primary_key_cols:
-            query = query.filter(cls._col_from_name(pk_col_name) == values_dict[pk_col_name])
+        if cls.__get_col_name__:
+            query = query.filter(cls._col_from_name(cls.__get_col_name__) == values_dict[cls.__get_col_name__])
         return session.query(query.exists()).scalar()
 
     @classmethod
     def exists(cls, db, values_dict):
-        """Return if a matching record exists in the database."""
+        """Return if a matching record if it exists in the database."""
         with db.managed_session() as session:
             return cls.s_exists(session, values_dict)
 
@@ -363,7 +345,7 @@ class DbObject():
     @classmethod
     def s_get_from_dict(cls, session, values_dict):
         """Return a single activity instance for the given id."""
-        return cls.s_get(session, values_dict[cls.get_col_name])
+        return cls.s_get(session, values_dict[cls.__get_col_name__ or cls.__time_col_name__])
 
     @classmethod
     def s_find_match(cls, session, match_dict):
