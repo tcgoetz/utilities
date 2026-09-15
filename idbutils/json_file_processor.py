@@ -6,6 +6,7 @@ __license__ = "GPL"
 
 import json
 import logging
+import sys
 import traceback
 from tqdm import tqdm
 import dateutil.parser
@@ -19,8 +20,9 @@ class JsonFileProcessor():
 
     logger = logging.getLogger()
     conversions = None
+    _progress_label = 'Processing JSON files'
 
-    def __init__(self, file_regex, input_file=None, input_dir=None, latest=True, debug=False, recursive=False):
+    def __init__(self, file_regex, input_file=None, input_dir=None, latest=True, debug=False, recursive=False, simple_output=False):
         """
         Return an instance of JsonFileProcessor.
 
@@ -32,9 +34,11 @@ class JsonFileProcessor():
             latest (Boolean): check for latest files only
             debug (Boolean): enable debug logging
             recursive (Boolean): check the search directory recursively
+            simple_output (Boolean): print progress as lines instead of a progress bar (default False)
 
         """
         self.debug = debug
+        self.simple_output = simple_output
         if input_file:
             self.file_names = FileProcessor.match_file(input_file, file_regex)
             self.logger.info("Found %d json files for %s in %s", self.file_count(), file_regex, input_file)
@@ -109,21 +113,39 @@ class JsonFileProcessor():
         except Exception as e:
             self.logger.error("Exception in %s from %s %s: %s", process_function, id, self.__class__.__name__, e)
 
-    def _process_files(self):
-        self.logger.info("Processing %d json files", self.file_count())
+    def __process_files(self, file_name):
+        """Process one JSON file and update the totals."""
+        try:
+            json_data = self.__parse_file(file_name)
+            updates = self._process_json(json_data)
+            if updates > 0:
+                self.logger.info("DB updated with %d entries from %s", updates, file_name)
+                self.total_updates += updates
+            else:
+                self.logger.warning("No data saved for %s", file_name)
+        except Exception:
+            self.logger.error("Failed to parse %s: %s", file_name, traceback.format_exc())
+
+    def _process_files_simple(self):
+        """Process files with start and final-count lines on stderr."""
+        print(self._progress_label, file=sys.stderr, flush=True)
+        visited = 0
+        for file_name in self.file_names:
+            self.__process_files(file_name)
+            visited += 1
+        unit = 'file' if visited == 1 else 'files'
+        print(f'{self._progress_label}: {visited} {unit} visited', file=sys.stderr, flush=True)
+
+    def _process_files_progress(self):
+        """Process files with a progress bar."""
         for file_name in tqdm(self.file_names, unit='files'):
-            try:
-                json_data = self.__parse_file(file_name)
-                updates = self._process_json(json_data)
-                if updates > 0:
-                    self.logger.info("DB updated with %d entries from %s", updates, file_name)
-                    self.total_updates += updates
-                else:
-                    self.logger.warning("No data saved for %s", file_name)
-            except Exception:
-                self.logger.error("Failed to parse %s: %s", file_name, traceback.format_exc())
-        self.logger.info("DB updated with %d entries from %d files.", self.total_updates, self.file_count())
+            self.__process_files(file_name)
 
     def process(self):
         """Import files into the database."""
-        self._process_files()
+        self.logger.info("Processing %d json files", self.file_count())
+        if self.simple_output:
+            self._process_files_simple()
+        else:
+            self._process_files_progress()
+        self.logger.info("DB updated with %d entries from %d files.", self.total_updates, self.file_count())

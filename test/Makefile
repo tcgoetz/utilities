@@ -11,19 +11,19 @@ export PYTHONPATH
 
 DB_TEST_GROUPS=
 DB_OBJECTS_TEST_GROUPS=db_object
-TEST_GROUPS=$(DB_TEST_GROUPS) $(DB_OBJECTS_TEST_GROUPS)
+TEST_GROUPS=$(DB_TEST_GROUPS) $(DB_OBJECTS_TEST_GROUPS) json_file_processor
 
 
 #
 # Over all targets
 #
-all: $(ALL_TEST_GROUPS)
+all: $(ALL_TEST_GROUPS) json_file_processor
 
 db: $(DB_TEST_GROUPS)
 
 db_objects: $(DB_OBJECTS_TEST_GROUPS)
 
-verify_commit: db_objects
+verify_commit: db_objects json_file_processor
 
 clean:
 	rm -f *.pyc
