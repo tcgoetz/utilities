@@ -68,11 +68,14 @@ class JsonFileProcessor():
         with open(filename) as file:
             return json.load(file, object_hook=parser)
 
-    def _get_field(self, json, fieldname, format_func=str):
+    def _get_field(self, json, fieldname, format_func=str, precision=None):
         try:
             data = json[fieldname]
             if data is not None:
-                return format_func(data)
+                if precision is not None:
+                    return round(format_func(data), precision)
+                else:
+                    return format_func(data)
         except KeyError as e:
             self.logger.debug("JSON %s not found in %r: %s", fieldname, json, e)
 
