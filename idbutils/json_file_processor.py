@@ -5,6 +5,7 @@ __copyright__ = "Copyright Tom Goetz"
 __license__ = "GPL"
 
 import json
+import datetime
 import logging
 import traceback
 from tqdm import tqdm
@@ -53,6 +54,13 @@ class JsonFileProcessor():
                 return dateutil.parser.parse(date_str)
             except Exception as e:
                 self.logger.info("Failed to parse date %s: %s", date_str, e)
+
+    def _parse_timestamp(self, ts_str):
+        """Return a datetime object for the given date string."""
+        try:
+            return datetime.datetime.fromtimestamp(ts_str)
+        except Exception as e:
+            self.logger.info("Failed to parse timestamp %s: %s", ts_str, e)
 
     def file_count(self):
         """Return the number of files that will be proccessed."""
