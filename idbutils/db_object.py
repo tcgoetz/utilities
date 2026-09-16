@@ -267,7 +267,7 @@ class DbObject():
         else:
             stmt = f'CREATE OR REPLACE VIEW {view_name} AS {query_str}'
         result = session.execute(text(stmt))
-        logger.debug("Created join view %s using query %s: %r", view_name, query_str, result)
+        logger.info("Created join view %s using query %s: %r", view_name, query_str, result)
 
     @classmethod
     def create_view_if_doesnt_exist(cls, db, view_name, query_str):
@@ -276,18 +276,20 @@ class DbObject():
             cls.__create_view_if_not_exists(session, view_name, query_str)
 
     @classmethod
-    def create_join_view(cls, db, view_name, selectable, join_table, filter_by=None, order_by=None):
+    def create_join_view(cls, db, view_name, selectable, join_tables, filter_by=None, order_by=None):
         """Create a database view named view_name if it doesn't already exist."""
         with db.managed_session() as session:
             try:
-                query = Query(selectable, session=session).join(join_table)
+                query = Query(selectable, session=session)
+                for join_table in join_tables:
+                    query = query.join(join_table)
                 if filter_by is not None:
                     query = query.filter(filter_by)
                 if order_by is not None:
                     query = query.order_by(order_by)
                 cls.__create_view_if_not_exists(session, view_name, str(query))
             except Exception as e:
-                raise DbViewException(f"Failed to create DB view {view_name} with table {join_table}", e)
+                raise DbViewException(f"Failed to create DB view {view_name} with table {join_tables}", e)
 
     @classmethod
     def create_multi_join_view(cls, db, view_name, selectable, joins, order_by=None):
