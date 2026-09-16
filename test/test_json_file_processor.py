@@ -22,6 +22,35 @@ class RecordingProcessor(JsonFileProcessor):
         return data['updates']
 
 
+class LabelledProcessor(RecordingProcessor):
+    """Use an operation-specific simple-output label."""
+
+    _progress_label = 'Importing fixture JSON files'
+
+
+class OverrideProcessor(RecordingProcessor):
+    """Replace file processing to exercise the existing subclass hook."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.process_files_calls = 0
+
+    def _process_files(self):
+        self.process_files_calls += 1
+
+
+class DelegatingProcessor(RecordingProcessor):
+    """Extend file processing and delegate to the base implementation."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.process_files_calls = 0
+
+    def _process_files(self):
+        self.process_files_calls += 1
+        super()._process_files()
+
+
 class TestJsonFileProcessor(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
@@ -32,30 +61,28 @@ class TestJsonFileProcessor(unittest.TestCase):
         path.write_text(json.dumps(data), encoding='utf-8')
         return str(path)
 
-    def processor(self, **kwargs):
-        return RecordingProcessor(r'.*\.json', input_dir=self.directory.name, latest=False, **kwargs)
+    def processor(self, processor_class=RecordingProcessor, **kwargs):
+        return processor_class(r'.*\.json', input_dir=self.directory.name, latest=False, **kwargs)
 
-    def test_existing_positional_arguments_and_default_bar(self):
+    def test_existing_positional_arguments_and_default_progress(self):
         filename = self.write_file('valid.json', {'updates': '2'})
         processor = RecordingProcessor(r'.*\.json', filename, None, False, 3, True)
-        output = io.StringIO()
-        with contextlib.redirect_stderr(output):
+        with patch('idbutils.json_file_processor.tqdm', side_effect=lambda files, **kwargs: files) as bar:
             processor.process()
+        bar.assert_called_once_with(processor.file_names, unit='files')
         self.assertEqual(processor.debug, 3)
         self.assertFalse(processor.simple_output)
         self.assertEqual(processor.total_updates, 2)
-        self.assertIn('\r', output.getvalue())
-        self.assertNotIn('files visited', output.getvalue())
 
-    def test_simple_output_is_flushed_and_does_not_use_tqdm(self):
+    def test_simple_output_uses_custom_label_and_is_flushed_without_tqdm(self):
         self.write_file('valid.json', {'updates': '7'})
-        processor = self.processor(simple_output=True)
+        processor = self.processor(LabelledProcessor, simple_output=True)
         output = io.StringIO()
         stream = Mock(wraps=output)
         with patch('idbutils.json_file_processor.tqdm', side_effect=AssertionError('unexpected progress bar')), \
                 contextlib.redirect_stderr(stream):
             processor.process()
-        self.assertEqual(output.getvalue(), 'Processing JSON files\nProcessing JSON files: 1 file visited\n')
+        self.assertEqual(output.getvalue(), 'Importing fixture JSON files\nImporting fixture JSON files: 1 file visited\n')
         self.assertEqual(stream.flush.call_count, 2)
         self.assertEqual(processor.total_updates, 7)
 
@@ -105,6 +132,47 @@ class TestJsonFileProcessor(unittest.TestCase):
         with contextlib.redirect_stderr(output), self.assertRaises(RuntimeError):
             processor.process()
         self.assertEqual(output.getvalue(), 'Processing JSON files\n')
+
+    def test_process_calls_existing_process_files_override(self):
+        self.write_file('valid.json', {'updates': 1})
+        for simple_output in (False, True):
+            with self.subTest(simple_output=simple_output):
+                processor = self.processor(OverrideProcessor, simple_output=simple_output)
+                with patch('idbutils.json_file_processor.tqdm', side_effect=AssertionError('unexpected progress bar')):
+                    processor.process()
+                self.assertEqual(processor.process_files_calls, 1)
+                self.assertEqual(processor.total_updates, 0)
+
+    def test_process_files_override_can_delegate_to_super(self):
+        self.write_file('valid.json', {'updates': 2})
+        for simple_output in (False, True):
+            with self.subTest(simple_output=simple_output):
+                processor = self.processor(DelegatingProcessor, simple_output=simple_output)
+                output = io.StringIO()
+                with self.assertLogs(level='INFO') as logs, contextlib.redirect_stderr(output), \
+                        patch('idbutils.json_file_processor.tqdm', side_effect=lambda files, **kwargs: files) as bar:
+                    processor.process()
+                self.assertEqual(processor.process_files_calls, 1)
+                self.assertEqual(processor.total_updates, 2)
+                self.assertEqual(sum(line.endswith('Processing 1 json files') for line in logs.output), 1)
+                self.assertEqual(sum(line.endswith('DB updated with 2 entries from 1 files.') for line in logs.output), 1)
+                self.assertEqual(bar.call_count, 0 if simple_output else 1)
+                if simple_output:
+                    self.assertEqual(output.getvalue(), 'Processing JSON files\nProcessing JSON files: 1 file visited\n')
+
+    def test_base_process_files_remains_callable(self):
+        self.write_file('valid.json', {'updates': 3})
+        for simple_output in (False, True):
+            with self.subTest(simple_output=simple_output):
+                processor = self.processor(simple_output=simple_output)
+                output = io.StringIO()
+                with contextlib.redirect_stderr(output), \
+                        patch('idbutils.json_file_processor.tqdm', side_effect=lambda files, **kwargs: files) as bar:
+                    processor._process_files()
+                self.assertEqual(processor.total_updates, 3)
+                self.assertEqual(bar.call_count, 0 if simple_output else 1)
+                if simple_output:
+                    self.assertEqual(output.getvalue(), 'Processing JSON files\nProcessing JSON files: 1 file visited\n')
 
     def test_progress_options_belong_to_each_instance(self):
         self.write_file('valid.json', {'updates': 1})

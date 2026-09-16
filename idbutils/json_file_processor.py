@@ -113,7 +113,7 @@ class JsonFileProcessor():
         except Exception as e:
             self.logger.error("Exception in %s from %s %s: %s", process_function, id, self.__class__.__name__, e)
 
-    def __process_files(self, file_name):
+    def __process_file(self, file_name):
         """Process one JSON file and update the totals."""
         try:
             json_data = self.__parse_file(file_name)
@@ -126,12 +126,21 @@ class JsonFileProcessor():
         except Exception:
             self.logger.error("Failed to parse %s: %s", file_name, traceback.format_exc())
 
+    def _process_files(self):
+        """Process files using the selected output mode."""
+        self.logger.info("Processing %d json files", self.file_count())
+        if self.simple_output:
+            self._process_files_simple()
+        else:
+            self._process_files_progress()
+        self.logger.info("DB updated with %d entries from %d files.", self.total_updates, self.file_count())
+
     def _process_files_simple(self):
         """Process files with start and final-count lines on stderr."""
         print(self._progress_label, file=sys.stderr, flush=True)
         visited = 0
         for file_name in self.file_names:
-            self.__process_files(file_name)
+            self.__process_file(file_name)
             visited += 1
         unit = 'file' if visited == 1 else 'files'
         print(f'{self._progress_label}: {visited} {unit} visited', file=sys.stderr, flush=True)
@@ -139,13 +148,8 @@ class JsonFileProcessor():
     def _process_files_progress(self):
         """Process files with a progress bar."""
         for file_name in tqdm(self.file_names, unit='files'):
-            self.__process_files(file_name)
+            self.__process_file(file_name)
 
     def process(self):
         """Import files into the database."""
-        self.logger.info("Processing %d json files", self.file_count())
-        if self.simple_output:
-            self._process_files_simple()
-        else:
-            self._process_files_progress()
-        self.logger.info("DB updated with %d entries from %d files.", self.total_updates, self.file_count())
+        self._process_files()
