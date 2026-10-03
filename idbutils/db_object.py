@@ -543,48 +543,52 @@ class DbObject():
             return [row[0] for row in cls._s_get_col_func_query(session, col, func.distinct, start_ts, end_ts).all()]
 
     @classmethod
-    def s_get_col_avg(cls, session, col, start_ts=None, end_ts=None, ignore_le_zero=False):
+    def s_get_col_avg(cls, session, col, start_ts=None, end_ts=None, ignore_le_zero=False, precision=None):
         """Return the average value of a column filtered by criteria."""
-        return cls._s_get_col_func_query(session, col, func.avg, start_ts, end_ts, col if ignore_le_zero else None).scalar()
+        result = cls._s_get_col_func_query(session, col, func.avg, start_ts, end_ts, ignore_le_zero).scalar()
+        return round(result, precision) if precision is not None and result is not None else result
 
     @classmethod
-    def get_col_avg(cls, db, col, start_ts=None, end_ts=None, ignore_le_zero=False):
+    def get_col_avg(cls, db, col, start_ts=None, end_ts=None, ignore_le_zero=False, precision=None):
         """Return the average value of a column filtered by criteria."""
         with db.managed_session() as session:
-            return cls.s_get_col_avg(session, col, start_ts, end_ts, ignore_le_zero)
+            return cls.s_get_col_avg(session, col, start_ts, end_ts, ignore_le_zero, precision)
 
     @classmethod
-    def s_get_col_min(cls, session, col, start_ts=None, end_ts=None, ignore_le_zero=False):
+    def s_get_col_min(cls, session, col, start_ts=None, end_ts=None, ignore_le_zero=False, precision=None):
         """Return the minimum value in a column filtered by criteria."""
-        return cls._s_get_col_func_query(session, col, func.min, start_ts, end_ts, col if ignore_le_zero else None).scalar()
+        result = cls._s_get_col_func_query(session, col, func.min, start_ts, end_ts, ignore_le_zero).scalar()
+        return round(result, precision) if precision is not None and result is not None else result
 
     @classmethod
-    def get_col_min(cls, db, col, start_ts=None, end_ts=None, ignore_le_zero=False):
+    def get_col_min(cls, db, col, start_ts=None, end_ts=None, ignore_le_zero=False, precision=None):
         """Return the minimum value in a column filtered by criteria."""
         with db.managed_session() as session:
-            return cls._s_get_col_func_query(session, col, func.min, start_ts, end_ts, col if ignore_le_zero else None).scalar()
+            return cls.s_get_col_min(session, col, start_ts, end_ts, ignore_le_zero, precision)
 
     @classmethod
-    def s_get_col_max(cls, session, col, start_ts=None, end_ts=None, ignore_le_zero=False):
+    def s_get_col_max(cls, session, col, start_ts=None, end_ts=None, ignore_le_zero=False, precision=None):
         """Return the maximum value in a column filtered by criteria."""
-        return cls._s_get_col_func_query(session, col, func.max, start_ts, end_ts, ignore_le_zero).scalar()
+        result = cls._s_get_col_func_query(session, col, func.max, start_ts, end_ts, ignore_le_zero).scalar()
+        return round(result, precision) if precision is not None and result is not None else result
 
     @classmethod
-    def get_col_max(cls, db, col, start_ts=None, end_ts=None, ignore_le_zero=False):
+    def get_col_max(cls, db, col, start_ts=None, end_ts=None, ignore_le_zero=False, precision=None):
         """Return the maximum value in a column filtered by criteria."""
         with db.managed_session() as session:
-            return cls._s_get_col_func_query(session, col, func.max, start_ts, end_ts, ignore_le_zero).scalar()
+            return cls.s_get_col_max(session, col, start_ts, end_ts, ignore_le_zero, precision)
 
     @classmethod
-    def s_get_col_sum(cls, session, col, start_ts=None, end_ts=None):
+    def s_get_col_sum(cls, session, col, start_ts=None, end_ts=None, precision=None):
         """Return the sum of a column filtered by criteria."""
-        return cls._s_get_col_func_query(session, col, func.sum, start_ts, end_ts).scalar()
+        result = cls._s_get_col_func_query(session, col, func.sum, start_ts, end_ts).scalar()
+        return round(result, precision) if precision is not None and result is not None else result
 
     @classmethod
-    def get_col_sum(cls, db, col, start_ts=None, end_ts=None):
+    def get_col_sum(cls, db, col, start_ts=None, end_ts=None, precision=None):
         """Return the sum of a column filtered by criteria."""
         with db.managed_session() as session:
-            return cls.s_get_col_sum(session, col, start_ts, end_ts)
+            return cls.s_get_col_sum(session, col, start_ts, end_ts, precision)
 
     @classmethod
     def _s_get_time_col_func(cls, session, col, stat_func, start_ts=None, end_ts=None):
@@ -792,8 +796,9 @@ class DbObject():
         return cls.row_count_for_period(db, start_ts, end_ts)
 
     @classmethod
-    def _s_get_col_func_for_value(cls, session, col, stat_func, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
-        return cls._s_query(session, stat_func(col), None, start_ts, end_ts, col if ignore_le_zero else None).filter(match_col == match_value).scalar()
+    def _s_get_col_func_for_value(cls, session, col, stat_func, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False, precision=None):
+        result = cls._s_query(session, stat_func(col), None, start_ts, end_ts, col if ignore_le_zero else None).filter(match_col == match_value).scalar()
+        return round(result, precision) if precision is not None and result is not None else result
 
     @classmethod
     def _get_col_func_for_value(cls, db, col, stat_func, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
@@ -801,43 +806,43 @@ class DbObject():
             return cls._s_query(session, stat_func(col), None, start_ts, end_ts, col if ignore_le_zero else None).filter(match_col == match_value).scalar()
 
     @classmethod
-    def _get_col_sum_for_value(cls, session, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
-        return cls._s_get_col_func_for_value(session, col, func.sum, match_col, match_value, start_ts, end_ts, ignore_le_zero)
+    def _get_col_sum_for_value(cls, session, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False, precision=None):
+        return cls._s_get_col_func_for_value(session, col, func.sum, match_col, match_value, start_ts, end_ts, ignore_le_zero, precision)
 
     @classmethod
-    def get_col_sum_for_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
+    def get_col_sum_for_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False, precision=None):
         """Return the sum of column values limited by row where match_col has match_value and are in time period defined by start_ts and end_ts."""
-        return cls._get_col_func_for_value(db, col, func.sum, match_col, match_value, start_ts, end_ts, ignore_le_zero)
+        return cls._get_col_func_for_value(db, col, func.sum, match_col, match_value, start_ts, end_ts, ignore_le_zero, precision)
 
     @classmethod
-    def s_get_col_avg_for_value(cls, session, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
+    def s_get_col_avg_for_value(cls, session, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False, precision=None):
         """Return the average of column values limited by row where match_col has match_value and are in time period defined by start_ts and end_ts."""
-        return cls._s_get_col_func_for_value(session, col, func.avg, match_col, match_value, start_ts, end_ts, ignore_le_zero)
+        return cls._s_get_col_func_for_value(session, col, func.avg, match_col, match_value, start_ts, end_ts, ignore_le_zero, precision)
 
     @classmethod
-    def get_col_avg_for_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
+    def get_col_avg_for_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False, precision=None):
         """Return the average of column values limited by row where match_col has match_value and are in time period defined by start_ts and end_ts."""
-        return cls._get_col_func_for_value(db, col, func.avg, match_col, match_value, start_ts, end_ts, ignore_le_zero)
+        return cls._get_col_func_for_value(db, col, func.avg, match_col, match_value, start_ts, end_ts, ignore_le_zero, precision)
 
     @classmethod
-    def s_get_col_min_for_value(cls, session, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
+    def s_get_col_min_for_value(cls, session, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False, precision=None):
         """Return the minimum of column values limited by row where match_col has match_value and are in time period defined by start_ts and end_ts."""
-        return cls._s_get_col_func_for_value(session, col, func.min, match_col, match_value, start_ts, end_ts, ignore_le_zero)
+        return cls._s_get_col_func_for_value(session, col, func.min, match_col, match_value, start_ts, end_ts, ignore_le_zero, precision)
 
     @classmethod
-    def get_col_min_for_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
+    def get_col_min_for_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False, precision=None):
         """Return the minimum of column values limited by row where match_col has match_value and are in time period defined by start_ts and end_ts."""
-        return cls._get_col_func_for_value(db, col, func.min, match_col, match_value, start_ts, end_ts, ignore_le_zero)
+        return cls._get_col_func_for_value(db, col, func.min, match_col, match_value, start_ts, end_ts, ignore_le_zero, precision)
 
     @classmethod
-    def s_get_col_max_for_value(cls, session, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
+    def s_get_col_max_for_value(cls, session, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False, precision=None):
         """Return the maximum of column values limited by row where match_col has match_value and are in time period defined by start_ts and end_ts."""
-        return cls._s_get_col_func_for_value(session, col, func.max, match_col, match_value, start_ts, end_ts, ignore_le_zero)
+        return cls._s_get_col_func_for_value(session, col, func.max, match_col, match_value, start_ts, end_ts, ignore_le_zero, precision)
 
     @classmethod
-    def get_col_max_for_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False):
+    def get_col_max_for_value(cls, db, col, match_col, match_value, start_ts=None, end_ts=None, ignore_le_zero=False, precision=None):
         """Return the maximum of column values limited by row where match_col has match_value and are in time period defined by start_ts and end_ts."""
-        return cls._get_col_func_for_value(db, col, func.max, match_col, match_value, start_ts, end_ts, ignore_le_zero)
+        return cls._get_col_func_for_value(db, col, func.max, match_col, match_value, start_ts, end_ts, ignore_le_zero, precision)
 
     @classmethod
     def _get_col_func_greater_than_value(cls, db, col, stat_func, match_col, match_value, start_ts=None, end_ts=None):
