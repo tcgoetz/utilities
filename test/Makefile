@@ -17,7 +17,7 @@ TEST_GROUPS=$(DB_TEST_GROUPS) $(DB_OBJECTS_TEST_GROUPS) json_file_processor
 #
 # Over all targets
 #
-all: $(ALL_TEST_GROUPS) json_file_processor
+all: $(ALL_TEST_GROUPS) json_file_processor test_version
 
 db: $(DB_TEST_GROUPS)
 
