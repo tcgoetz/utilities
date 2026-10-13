@@ -5,10 +5,11 @@ __copyright__ = "Copyright Tom Goetz"
 __license__ = "GPL"
 
 
+import datetime
 import unittest
 import logging
 import tempfile
-from sqlalchemy import Integer, String
+from sqlalchemy import DateTime, Integer, String
 
 import idbutils
 
@@ -35,6 +36,11 @@ class TestActivitiesDb(unittest.TestCase):
         cls.table_single_pk = idbutils.DbObject.create("test_1k", cls.TestDB, 1, cols=_cols)
         _double_pk = ("activity_id", "record")
         cls.table_double_pk = idbutils.DbObject.create("test_2pk", cls.TestDB, 1, _double_pk, _cols)
+        _timed_cols = {
+            'id': {'args': [Integer], 'kwargs': {'primary_key': True}},
+            'timestamp': {'args': [DateTime]}
+        }
+        cls.table_timed = idbutils.DbObject.create("test_timed", cls.TestDB, 1, cols=_timed_cols, vars={'__time_col_name__': 'timestamp'})
         cls.test_db = cls.TestDB(cls.test_db_params)
 
     def test_exists_not_present(self):
@@ -60,6 +66,12 @@ class TestActivitiesDb(unittest.TestCase):
         }
         self.table_double_pk.add(self.test_db, data)
         self.assertTrue(self.table_double_pk.exists(self.test_db, data))
+
+    def test_years_and_months_leave_out_rows_without_a_time(self):
+        self.table_timed.add(self.test_db, {'id': 1, 'timestamp': datetime.datetime(2026, 5, 1)})
+        self.table_timed.add(self.test_db, {'id': 2, 'timestamp': None})
+        self.assertEqual(self.table_timed.get_years(self.test_db), [2026])
+        self.assertEqual(self.table_timed.get_months(self.test_db, 2026), [5])
 
 
 if __name__ == '__main__':
