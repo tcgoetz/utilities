@@ -12,8 +12,18 @@ import traceback
 from tqdm import tqdm
 import dateutil.parser
 
+from idbutils import parallel
+from idbutils.db import DbParams
 from idbutils.file_processor import FileProcessor
 from idbutils.conversions import epoch_ms_to_dt
+
+
+def _make_processor(processor_class, args, kwargs):
+    return processor_class(*args, **kwargs)
+
+
+def _process_file(processor, file_name):
+    return processor._process_file(file_name)
 
 
 class JsonFileProcessor():
@@ -22,6 +32,12 @@ class JsonFileProcessor():
     logger = logging.getLogger()
     conversions = None
     _progress_label = 'Processing JSON files'
+
+    def __new__(cls, *args, **kwargs):
+        """Remember how the instance was made so that worker processes can make their own."""
+        instance = super().__new__(cls)
+        instance._init_args = (args, kwargs)
+        return instance
 
     def __init__(self, file_regex, input_file=None, input_dir=None, latest=True, debug=False, recursive=False, simple_output=False):
         """
@@ -121,23 +137,36 @@ class JsonFileProcessor():
         except Exception as e:
             self.logger.error("Exception in %s from %s %s: %s", process_function, id, self.__class__.__name__, e)
 
+    def _process_file(self, file_name):
+        """Import one file into the database and return the number of entries saved."""
+        return self._process_json(self.__parse_file(file_name))
+
+    def __file_done(self, file_name, updates, error):
+        if error:
+            self.logger.error("Failed to parse %s: %s", file_name, error)
+        elif updates > 0:
+            self.logger.info("DB updated with %d entries from %s", updates, file_name)
+            self.total_updates += updates
+        else:
+            self.logger.warning("No data saved for %s", file_name)
+
     def __process_file(self, file_name):
         """Process one JSON file and update the totals."""
         try:
-            json_data = self.__parse_file(file_name)
-            updates = self._process_json(json_data)
-            if updates > 0:
-                self.logger.info("DB updated with %d entries from %s", updates, file_name)
-                self.total_updates += updates
-            else:
-                self.logger.warning("No data saved for %s", file_name)
+            self.__file_done(file_name, self._process_file(file_name), None)
         except Exception:
-            self.logger.error("Failed to parse %s: %s", file_name, traceback.format_exc())
+            self.__file_done(file_name, None, traceback.format_exc())
 
     def _process_files(self):
         """Process files using the selected output mode."""
         self.logger.info("Processing %d json files", self.file_count())
-        if self.simple_output:
+        args, kwargs = self._init_args
+        db_params = next((arg for arg in [*args, *kwargs.values()] if isinstance(arg, DbParams)), None)
+        workers = parallel.workers_for(db_params, self.file_count()) if db_params is not None else 1
+        if workers > 1:
+            parallel.import_items(db_params, self.file_names, workers, _make_processor, (type(self), args, kwargs), _process_file, self.__file_done,
+                                  simple_label=self._progress_label if self.simple_output else None)
+        elif self.simple_output:
             self._process_files_simple()
         else:
             self._process_files_progress()

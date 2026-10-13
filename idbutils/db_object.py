@@ -321,9 +321,12 @@ class DbObject():
     def s_exists(cls, session, values_dict):
         """Return if a record with the same primary key exists in the database."""
         query = session.query(cls)
-        for pk_col in cls.__table__.primary_key.columns:
+        pk_cols = cls.__table__.primary_key.columns
+        for pk_col in pk_cols:
             query = query.filter(pk_col == values_dict[pk_col.name])
-        return session.query(query.exists()).scalar()
+        if session.query(query.exists()).scalar():
+            return True
+        return native_ops.exists_in_real_db(session, cls, [values_dict[pk_col.name] for pk_col in pk_cols])
 
     @classmethod
     def exists(cls, db, values_dict):
@@ -341,7 +344,10 @@ class DbObject():
     def s_get(cls, session, instance_id, default=None):
         """Return a single instance for the given id."""
         native_ops.flush(session)
-        return session.get(cls, instance_id) or default
+        instance = session.get(cls, instance_id)
+        if instance is None and native_ops.read_through(session, cls, instance_id if isinstance(instance_id, (tuple, list)) else [instance_id]):
+            instance = session.get(cls, instance_id)
+        return instance or default
 
     @classmethod
     def get(cls, db, instance_id, default=None):

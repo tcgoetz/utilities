@@ -127,6 +127,54 @@ class TestNativeOps(unittest.TestCase):
             self.single_pk.s_insert_or_update(session, values)
         self.assertEqual(self.__rows(orm_db), self.__rows(native_db))
 
+    def test_capture_and_replay_gives_same_rows(self):
+        ops = self.__random_ops(42, 600)
+        reference_db = self.__db()
+        self.__apply(reference_db, ops, per_session=30)
+        target_db = self.__db()
+        self.__apply(target_db, ops[:200], per_session=30)
+        # Each session stands for one imported file: its writes are logged in a worker and replayed before the next one reads.
+        for start in range(200, len(ops), 30):
+            native_ops.start_capture()
+            try:
+                self.__apply(self.TestDB(target_db.db_params), ops[start:start + 30], per_session=30)
+                captured = native_ops.take_captured()
+            finally:
+                native_ops.stop_capture()
+            self.assertTrue(captured)
+            with target_db.engine.begin() as connection:
+                for db_name, statement, rows in captured:
+                    self.assertEqual(db_name, 'native_ops_test')
+                    connection.exec_driver_sql(statement, rows)
+        self.assertEqual(self.__rows(reference_db), self.__rows(target_db))
+
+    def test_capture_sql_expression_values(self):
+        def duration(minutes):
+            return self.single_pk._time_from_secs(self.single_pk._secs_from_time(datetime.time(0, minutes)) / 7)
+        reference_db = self.__db()
+        target_db = self.__db()
+        for db in (reference_db, target_db):
+            with db.managed_session() as session:
+                self.single_pk.s_insert_or_update(session, {'id': 1, 'count': 1})
+        for values in ({'id': 2, 'duration': duration(7)}, {'id': 1, 'duration': duration(14)}):
+            with reference_db.managed_session() as session:
+                self.single_pk.s_insert_or_update(session, values)
+            native_ops.start_capture()
+            try:
+                with self.TestDB(target_db.db_params).managed_session() as session:
+                    self.single_pk.s_insert_or_update(session, values)
+                captured = native_ops.take_captured()
+            finally:
+                native_ops.stop_capture()
+            with target_db.engine.begin() as connection:
+                for _, statement, rows in captured:
+                    connection.exec_driver_sql(statement, rows)
+        loaded = []
+        for db in (reference_db, target_db):
+            with db.managed_session() as session:
+                loaded.append([(row.id, row.count, row.duration) for row in session.query(self.single_pk).order_by(self.single_pk.id)])
+        self.assertEqual(loaded[0], loaded[1])
+
     def test_rows_are_written_in_batches(self):
         db = self.__db()
         with db.managed_session() as session:
