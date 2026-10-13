@@ -45,6 +45,10 @@ class TestActivitiesDb(unittest.TestCase):
         self.assertFalse(self.table_single_pk.exists(self.test_db, data))
         self.assertFalse(self.table_double_pk.exists(self.test_db, data))
 
+    def test_exists_other_record_of_same_activity(self):
+        self.table_double_pk.add(self.test_db, {'activity_id': 2, 'record': 0})
+        self.assertFalse(self.table_double_pk.exists(self.test_db, {'activity_id': 2, 'record': 1}))
+
     def test_exists_present_1pk(self):
         data = {
             'activity_id': 1,
