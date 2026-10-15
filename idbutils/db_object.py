@@ -17,7 +17,6 @@ from sqlalchemy import DateTime, Date, Time, PrimaryKeyConstraint, Column, Integ
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import FunctionElement
 
-from idbutils import native_ops
 from idbutils.list_and_dict import filter_dict_by_list
 from idbutils.db_exception import DbException
 
@@ -340,7 +339,6 @@ class DbObject():
     @classmethod
     def s_get(cls, session, instance_id, default=None):
         """Return a single instance for the given id."""
-        native_ops.flush(session)
         return session.get(cls, instance_id) or default
 
     @classmethod
@@ -352,10 +350,9 @@ class DbObject():
     @classmethod
     def s_get_from_dict(cls, session, values_dict):
         """Return a single activity instance for the given id."""
-        pk_cols = cls.__table__.primary_key.columns
-        if len(pk_cols) > 1:
-            return cls.s_get(session, tuple(values_dict[pk_col.name] for pk_col in pk_cols))
-        return cls.s_get(session, values_dict[cls.__get_col_name__ or cls.__time_col_name__])
+        if len(cls.__table__.primary_key.columns) > 1:
+            raise DbApiException("Can't call get for a table that has nore than one primary key col")
+        return cls.s_get(session, values_dict[cls.__table__.primary_key.columns[0].name])
 
     @classmethod
     def s_find_match(cls, session, match_dict):
@@ -379,8 +376,6 @@ class DbObject():
     @classmethod
     def s_find_or_create(cls, session, values_dict, ignore_none=True, ignore_zero=False):
         """Create a database record with the passed in data if it doesn't exist."""
-        if native_ops.insert_ignore(session, cls, values_dict):
-            return
         instance = cls.s_get_from_dict(session, values_dict)
         if not instance:
             session.add(cls(**values_dict))
@@ -394,8 +389,6 @@ class DbObject():
     @classmethod
     def s_insert_or_update(cls, session, values_dict, ignore_none=True, ignore_zero=False):
         """Create a database record if it doesn't exist. Update it if does exist."""
-        if native_ops.upsert(session, cls, values_dict, ignore_none, ignore_zero):
-            return
         instance = cls.s_get_from_dict(session, values_dict)
         if instance:
             instance.update_from_dict(values_dict, ignore_none, ignore_zero)
