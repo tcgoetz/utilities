@@ -315,10 +315,10 @@ class DbObject():
 
     @classmethod
     def s_exists(cls, session, values_dict):
-        """Return if a matching record based on the unique column __get_col_name__ if it exists in the database."""
+        """Return if a record with the same primary key exists in the database."""
         query = session.query(cls)
-        if cls.__get_col_name__:
-            query = query.filter(cls._col_from_name(cls.__get_col_name__) == values_dict[cls.__get_col_name__])
+        for pk_col in cls.__table__.primary_key.columns:
+            query = query.filter(pk_col == values_dict[pk_col.name])
         return session.query(query.exists()).scalar()
 
     @classmethod
