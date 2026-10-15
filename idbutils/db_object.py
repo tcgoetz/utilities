@@ -120,6 +120,10 @@ class DbViewException(DbException):
     """Exceptions encountered while managing DB views."""
 
 
+class DbApiException(DbException):
+    """Exceptions encountered while calling DB apis."""
+
+
 class DbObject():
     """Base class for implementing database table objects."""
 
@@ -127,7 +131,6 @@ class DbObject():
     db_views = []
 
     __time_col_name__ = None
-    __get_col_name__ = None
 
     @classmethod
     def __init_subclass__(cls, **kwargs):
@@ -428,7 +431,7 @@ class DbObject():
 
     @classmethod
     def _rows_to_ints_not_none(cls, rows):
-        return [cls._row_to_int_not_none(row) for row in rows]
+        return [cls._row_to_int(row) for row in rows if row[0] is not None]
 
     @classmethod
     def _row_to_month(cls, row):

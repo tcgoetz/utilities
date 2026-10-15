@@ -7,15 +7,13 @@ __license__ = "GPL"
 import sys
 import logging
 
-import idbutils
-
 
 logger = logging.getLogger(__file__)
 
 
 def to_string(version_info, prerelease=False):
     """Return a version string for a version tuple."""
-    return '.'.join(idbutils.__version__) + (' pre' if prerelease else '')
+    return '.'.join(str(digit) for digit in version_info) + (' pre' if prerelease else '')
 
 
 def format(program, version):
