@@ -424,7 +424,7 @@ class DbObject():
 
     @classmethod
     def _rows_to_ints_not_none(cls, rows):
-        return [cls._row_to_int_not_none(row) for row in rows]
+        return [cls._row_to_int(row) for row in rows if row[0] is not None]
 
     @classmethod
     def _row_to_month(cls, row):
