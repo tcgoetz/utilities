@@ -119,6 +119,10 @@ class DbViewException(DbException):
     """Exceptions encountered while managing DB views."""
 
 
+class DbApiException(DbException):
+    """Exceptions encountered while calling DB apis."""
+
+
 class DbObject():
     """Base class for implementing database table objects."""
 
@@ -126,7 +130,6 @@ class DbObject():
     db_views = []
 
     __time_col_name__ = None
-    __get_col_name__ = None
 
     @classmethod
     def __init_subclass__(cls, **kwargs):
@@ -347,7 +350,9 @@ class DbObject():
     @classmethod
     def s_get_from_dict(cls, session, values_dict):
         """Return a single activity instance for the given id."""
-        return cls.s_get(session, values_dict[cls.__get_col_name__ or cls.__time_col_name__])
+        if len(cls.__table__.primary_key.columns) > 1:
+            raise DbApiException("Can't call get for a table that has nore than one primary key col")
+        return cls.s_get(session, values_dict[cls.__table__.primary_key.columns[0].name])
 
     @classmethod
     def s_find_match(cls, session, match_dict):
