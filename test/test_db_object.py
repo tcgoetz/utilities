@@ -77,6 +77,12 @@ class TestActivitiesDb(unittest.TestCase):
         self.assertEqual(self.table_timed.get_years(self.test_db), [2026])
         self.assertEqual(self.table_timed.get_months(self.test_db, 2026), [5])
 
+    def test_time_arithmetic_on_seconds_since_midnight(self):
+        seconds = self.table_timed._secs_from_time(datetime.time(2, 30))
+        with self.test_db.managed_session() as session:
+            self.assertEqual(session.query(self.table_timed._time_from_secs(seconds / 7)).scalar(), datetime.time(0, 21, 25))
+            self.assertEqual(session.query(seconds * 2).scalar(), 18000)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

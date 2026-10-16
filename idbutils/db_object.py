@@ -64,7 +64,7 @@ class _seconds_since_midnight(FunctionElement):
 @compiles(_seconds_since_midnight, 'sqlite')
 def _seconds_since_midnight_sqlite(element, compiler, **kw):
     inner = compiler.process(element.clauses, **kw)
-    return f"strftime('%s', {inner}) - strftime('%s', '00:00')"
+    return f"(strftime('%s', {inner}) - strftime('%s', '00:00'))"
 
 
 @compiles(_seconds_since_midnight, 'postgresql')
@@ -80,7 +80,7 @@ def _seconds_since_midnight_mysql(element, compiler, **kw):
 @compiles(_seconds_since_midnight)
 def _seconds_since_midnight_default(element, compiler, **kw):
     inner = compiler.process(element.clauses, **kw)
-    return f"strftime('%s', {inner}) - strftime('%s', '00:00')"
+    return f"(strftime('%s', {inner}) - strftime('%s', '00:00'))"
 
 
 class _time_from_seconds(FunctionElement):
