@@ -355,7 +355,7 @@ class DbObject():
         pk_cols = cls.__table__.primary_key.columns
         if len(pk_cols) > 1:
             return cls.s_get(session, tuple(values_dict[pk_col.name] for pk_col in pk_cols))
-        return cls.s_get(session, values_dict[cls.__get_col_name__ or cls.__time_col_name__])
+        return cls.s_get(session, values_dict[pk_cols[0].name])
 
     @classmethod
     def s_find_match(cls, session, match_dict):

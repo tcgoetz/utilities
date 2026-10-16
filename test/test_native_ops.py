@@ -32,7 +32,7 @@ class TestNativeOps(unittest.TestCase):
             'flag': {'args': [Boolean]},
             'duration': {'args': [Time], 'kwargs': {'nullable': False, 'default': datetime.time.min}},
         }
-        cls.single_pk = idbutils.DbObject.create('native_1pk', cls.TestDB, 1, cols=_cols, vars={'__get_col_name__': 'id'})
+        cls.single_pk = idbutils.DbObject.create('native_1pk', cls.TestDB, 1, cols=_cols)
         _two_pk_cols = {
             'timestamp': {'args': [DateTime]},
             'kind': {'args': [String]},
