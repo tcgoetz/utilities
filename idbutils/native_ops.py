@@ -9,6 +9,7 @@ import sqlite3
 
 from sqlalchemy import event
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import ClauseElement
 
 
 logger = logging.getLogger(__name__)
@@ -147,6 +148,8 @@ def _enqueue(session, cls, values_dict, kind, ignore_none=True, ignore_zero=Fals
     for name in plan.pk:
         if values_dict.get(name) is None:
             return False
+    if any(isinstance(value, ClauseElement) for value in values_dict.values()):
+        return False
     # ORM changes made before this write have to reach the database before it does
     if not session._is_clean():
         session.flush()

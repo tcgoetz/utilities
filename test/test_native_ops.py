@@ -116,6 +116,17 @@ class TestNativeOps(unittest.TestCase):
             self.__apply(native_db, ops, per_session=25)
             self.assertEqual(self.__rows(orm_db), self.__rows(native_db), f'seed {seed}')
 
+    def test_sql_expression_values(self):
+        values = {'id': 1, 'count': 2, 'duration': self.single_pk._time_from_secs(self.single_pk._secs_from_time(datetime.time(0, 7)) / 7)}
+        orm_db = self.__db()
+        with mock.patch.object(native_ops, '_enqueue', return_value=False):
+            with orm_db.managed_session() as session:
+                self.single_pk.s_insert_or_update(session, values)
+        native_db = self.__db()
+        with native_db.managed_session() as session:
+            self.single_pk.s_insert_or_update(session, values)
+        self.assertEqual(self.__rows(orm_db), self.__rows(native_db))
+
     def test_rows_are_written_in_batches(self):
         db = self.__db()
         with db.managed_session() as session:
