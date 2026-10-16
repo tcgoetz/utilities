@@ -9,7 +9,7 @@ import datetime
 import logging
 from sqlalchemy import Column, String, DateTime
 
-from idbutils import db_object
+from idbutils import db_object, native_ops
 
 
 class KeyValueObject(db_object.DbObject):
@@ -29,6 +29,8 @@ class KeyValueObject(db_object.DbObject):
     @classmethod
     def s_set_newer(cls, session, key, value, timestamp=datetime.datetime.now()):
         """Set a key-value pair in the database if the timestamp is newer than the one in the database."""
+        if native_ops.upsert_newer(session, cls, {'timestamp' : timestamp, 'key' : key, 'value' : str(value)}):
+            return
         item = cls.s_get(session, key)
         if item is None or item.timestamp < timestamp:
             cls.s_insert_or_update(session, {'timestamp' : timestamp, 'key' : key, 'value' : str(value)})
