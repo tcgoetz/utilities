@@ -23,6 +23,7 @@ class PluginManager():
     def __init__(self, plugin_dir, plugin_dict):
         """Load python file based plugins from plugin_dir."""
         logger.info("Loading plugins from %s", plugin_dir)
+        self.plugin_dir = plugin_dir
         self.plugins = {}
         self._load_all(plugin_dir, plugin_dict)
 

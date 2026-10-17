@@ -10,7 +10,7 @@ PYTHONPATH=${PROJECT_BASE}/..
 export PYTHONPATH
 
 DB_TEST_GROUPS=
-DB_OBJECTS_TEST_GROUPS=db_object native_ops
+DB_OBJECTS_TEST_GROUPS=db_object native_ops parallel
 TEST_GROUPS=$(DB_TEST_GROUPS) $(DB_OBJECTS_TEST_GROUPS) json_file_processor
 
 

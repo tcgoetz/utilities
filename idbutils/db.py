@@ -8,10 +8,11 @@ import os
 import logging
 import types
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
+from idbutils import native_ops
 from idbutils.db_attributes import DbAttributesObject
 
 
@@ -38,6 +39,8 @@ class DbParams():
 class DB():
     """Object representing a database."""
 
+    _db_classes = {}
+
     def __init__(self, db_params, debug_level=0):
         """
         Return an instance a database access class.
@@ -54,7 +57,12 @@ class DB():
         else:
             logger.setLevel(logging.INFO)
         self.db_params = db_params
-        url_func = getattr(self, f'_{db_params.db_type}_url')
+        self.real_sqlite_path = None
+        if native_ops.capturing() and db_params.db_type == 'sqlite':
+            self.real_sqlite_path = self._sqlite_path(db_params)
+            url = f'sqlite:///{native_ops.scratch_dir()}/{self.db_name}.db'
+        else:
+            url = getattr(self, f'_{db_params.db_type}_url')(self.db_params)
         if db_params.db_type == 'postgresql':
             # Each idbutils.DB instance maps to its own PostgreSQL schema inside a
             # single shared database. db_name (e.g. 'garmin', 'garmin_activities')
@@ -63,21 +71,31 @@ class DB():
             # first if it doesn't exist.
             schema = self.db_name
             self.engine = create_engine(
-                url_func(self.db_params),
+                url,
                 echo=(debug_level > 1),
                 connect_args={'options': f'-csearch_path={schema}'},
             )
             with self.engine.begin() as conn:
                 conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
         else:
-            self.engine = create_engine(url_func(self.db_params), echo=(debug_level > 1))
-        self.Base.metadata.create_all(self.engine)
-        self.attributes = self._DbAttributes()
-        # now we can do checks
-        self.attributes.version_check(self, self.db_version)
-        # and last setup tables
-        for table in self.db_tables.values():
-            self.init_table(table)
+            self.engine = create_engine(url, echo=(debug_level > 1))
+        if self.real_sqlite_path is not None:
+            event.listen(self.engine, 'connect', self.__scratch_pragmas)
+        with native_ops.suspend_capture():
+            self.Base.metadata.create_all(self.engine)
+            self.attributes = self._DbAttributes()
+            # now we can do checks
+            self.attributes.version_check(self, self.db_version)
+            # and last setup tables
+            for table in self.db_tables.values():
+                self.init_table(table)
+
+    @staticmethod
+    def __scratch_pragmas(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute('PRAGMA synchronous=OFF')
+        cursor.execute('PRAGMA journal_mode=MEMORY')
+        cursor.close()
 
     @classmethod
     def add_table(cls, table):
@@ -136,7 +154,9 @@ class DB():
 
     def managed_session(self):
         """Return a session with automatic commit, rollback, and cleanup."""
-        return sessionmaker(self.engine, expire_on_commit=False).begin()
+        if native_ops.captures_sessions():
+            return native_ops.capture_session(self)
+        return sessionmaker(self.engine, expire_on_commit=False, info=native_ops.session_info(self)).begin()
 
     @classmethod
     def create(cls, name, version, doc=None):
@@ -151,7 +171,14 @@ class DB():
             namespace['Base'] = base
             namespace['_DbAttributes'] = types.new_class('_DbAttributes', bases=(base, DbAttributesObject))
         logger.debug("Creating DB class %s version %d", name, version)
-        return types.new_class(name + "Db", bases=(DB,), exec_body=class_exec)
+        db_class = types.new_class(name + "Db", bases=(DB,), exec_body=class_exec)
+        DB._db_classes[name] = db_class
+        return db_class
+
+    @classmethod
+    def class_for_name(cls, db_name):
+        """Return the database class created with a name."""
+        return DB._db_classes[db_name]
 
     @classmethod
     def delete_db(cls, db_params):
